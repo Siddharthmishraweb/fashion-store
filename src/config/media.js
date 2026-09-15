@@ -12,7 +12,7 @@ export const STOCK_LIBRARY = [
   { id: 'loom', label: 'At the loom', photoId: 'photo-1727430228383-aa1fb59db8bf' },
   { id: 'festive', label: 'Festive table', photoId: 'photo-1469334031218-e382a71b716b' },
   { id: 'pastel', label: 'Pastel weave', photoId: 'photo-1539109136881-3be0616acf4b' },
-  { id: 'linen', label: 'Linen texture', photoId: 'photo-1558171813-4c8843f2e36c' },
+  { id: 'linen', label: 'Linen texture', photoId: 'photo-1601924994987-69e26d50dc26' },
   { id: 'jewellery', label: 'Heirloom gold', photoId: 'photo-1515562141207-7a88fb7ce338' },
   { id: 'window', label: 'Window light', photoId: 'photo-1509631179647-0177331693ae' },
 ].map((item) => ({

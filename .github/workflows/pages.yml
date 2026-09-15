@@ -32,8 +32,6 @@ jobs:
           VITE_API_URL: ${{ vars.VITE_API_URL }}
           VITE_APP_NAME: Vastrika
         run: npm run build
-      - name: SPA fallback
-        run: cp dist/index.html dist/404.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
