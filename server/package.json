@@ -1,0 +1,38 @@
+{
+  "name": "vastrika-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Multi-tenant commerce API for the Vastrika platform",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "db": "node bench/local-db.mjs",
+    "dev": "node --watch --env-file=.env src/index.js",
+    "start": "node src/index.js",
+    "migrate": "node --env-file=.env src/db/migrate.js",
+    "seed": "node --env-file=.env src/db/seed.js",
+    "reset": "node --env-file=.env src/db/migrate.js --drop && node --env-file=.env src/db/seed.js",
+    "bench": "node bench/run.mjs",
+    "smoke": "node --env-file=.env bench/smoke.mjs",
+    "verify": "node bench/verify.mjs",
+    "verify:full": "node bench/with-local-db.mjs"
+  },
+  "dependencies": {
+    "@fastify/compress": "^8.0.1",
+    "@fastify/cors": "^10.0.1",
+    "@fastify/etag": "^6.0.1",
+    "@fastify/helmet": "^12.0.1",
+    "@fastify/rate-limit": "^10.2.1",
+    "@fastify/under-pressure": "^9.0.1",
+    "fastify": "^5.1.0",
+    "fastify-plugin": "^5.0.1",
+    "postgres": "^3.4.5"
+  },
+  "devDependencies": {
+    "autocannon": "^7.15.0",
+    "embedded-postgres": "^18.4.0-beta.17",
+    "pino-pretty": "^11.3.0"
+  }
+}
