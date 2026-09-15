@@ -1,5 +1,6 @@
 import { Component, useEffect, useId, useMemo, useRef } from 'react'
 import { cx } from '../../utils/index.js'
+import { env } from '../../config/env.js'
 import { safeImageUrl, safeUrl } from '../../utils/security.js'
 
 export function Button({ children, variant = 'primary', size, loading, className, type = 'button', disabled, ...props }) {
@@ -475,7 +476,7 @@ export class ErrorBoundary extends Component {
         </p>
         <div className="boundary-actions">
           <Button onClick={() => window.location.reload()}>Reload page</Button>
-          <Button variant="ghost" onClick={() => { window.location.href = '/' }}>Go to homepage</Button>
+          <Button variant="ghost" onClick={() => { window.location.href = env.homePath }}>Go to homepage</Button>
         </div>
       </div>
     )

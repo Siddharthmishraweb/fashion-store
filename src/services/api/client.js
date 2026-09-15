@@ -44,7 +44,7 @@ function handleFailure(path, status, data) {
 export async function api(path, { method = 'GET', body, tenantId, signal } = {}) {
   const headers = authHeaders({ tenantId })
 
-  if (env.useMock || !env.apiUrl) {
+  if (env.useMock) {
     const { mockRequest } = await loadMock()
     const result = await mockRequest(method, path, {
       body,
@@ -53,6 +53,10 @@ export async function api(path, { method = 'GET', body, tenantId, signal } = {})
     })
     if (!result.ok) handleFailure(path, result.status, result.data)
     return result.data
+  }
+
+  if (!env.apiUrl) {
+    throw new ApiError('Real API is selected (USE_MOCK=false) but VITE_API_URL is empty.', 0, null)
   }
 
   const controller = new AbortController()

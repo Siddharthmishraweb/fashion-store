@@ -4,7 +4,7 @@ import { storesApi } from '../../services/api/stores.js'
 import { useAsync, useDebounced } from '../../hooks/index.js'
 import { EmptyState, ErrorState, Input, OptimizedImage, Seo, Skeleton } from '../../components/common/index.jsx'
 import { THEMES, applyTheme } from '../../theme/themes.js'
-import { env } from '../../config/env.js'
+import { env, publicUrl } from '../../config/env.js'
 
 const PROMISES = [
   ['One platform, many voices', 'Every business gets its own theme, navigation, and homepage — no shared template look.'],
@@ -34,12 +34,12 @@ export default function PlatformHome() {
       <Seo
         title={`${env.appName} — independent fashion houses, one platform`}
         description="A white-label marketplace where each saree and fashion house runs its own branded storefront."
-        canonical={window.location.origin}
+        canonical={publicUrl('/')}
         jsonLd={{
           '@context': 'https://schema.org',
           '@type': 'WebSite',
           name: env.appName,
-          url: window.location.origin,
+          url: publicUrl('/'),
         }}
       />
       <a className="skip-link" href="#main">Skip to main content</a>

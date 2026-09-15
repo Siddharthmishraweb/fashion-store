@@ -274,8 +274,9 @@ export function SuperSettings() {
         </p>
         <h3>API</h3>
         <p className="muted">
-          The front end talks to one REST surface. Set <code>VITE_API_URL</code> to your backend and
-          <code> VITE_USE_MOCK=false</code> to switch off the built-in mock service.
+          Mock vs live data is the vault key <code>USE_MOCK</code> (see <code>src/config/vault.js</code>).
+          When it is true the storefront uses the in-browser catalogue. When it is false, set
+          <code> VITE_API_URL</code> to the Fastify origin.
         </p>
         <h3>Security posture</h3>
         <ul className="muted plain-list">

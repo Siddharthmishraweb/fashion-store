@@ -21,6 +21,7 @@ import {
 } from '../../components/common/index.jsx'
 import { useCart } from '../../context/CommerceContext.jsx'
 import { formatCurrency } from '../../utils/index.js'
+import { publicUrl } from '../../config/env.js'
 
 const FACET_GROUPS = [
   ['fabric', 'Fabric'],
@@ -192,7 +193,7 @@ export default function ProductListPage({ mode = 'category' }) {
       <Seo
         title={`${title} · ${tenant.name}`}
         description={`Browse ${title.toLowerCase()} at ${tenant.name}. ${data?.total || 0} handpicked weaves with pan-India shipping.`}
-        canonical={`${window.location.origin}${base}${category ? `/category/${category}` : '/products'}`}
+        canonical={publicUrl(`${base}${category ? `/category/${category}` : '/products'}`)}
         noindex={mode === 'search'}
       />
 

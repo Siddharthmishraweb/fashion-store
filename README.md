@@ -50,3 +50,4 @@ Admin: `/admin` · Super admin: `/super-admin`
 ## Docs
 
 - [Adding a new company](docs/adding-a-company.md) — onboard a storefront, create the owner login, and launch the shop.
+- [GitHub Pages](docs/github-pages.md) — mock vault (`USE_MOCK`) and static deploy. The Node API cannot run on Pages.

@@ -27,6 +27,7 @@ import { isEmail, isPin } from '../../utils/security.js'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useI18n } from '../../context/I18nContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
+import { publicUrl } from '../../config/env.js'
 
 function ReviewForm({ tenantId, productId, onDone }) {
   const [form, setForm] = useState({ rating: 5, title: '', body: '' })
@@ -177,7 +178,7 @@ export default function ProductDetail() {
         title={`${product.name} · ${tenant.name}`}
         description={product.description.slice(0, 155)}
         image={images[0]?.src}
-        canonical={`${window.location.origin}${base}/product/${product.slug}`}
+        canonical={publicUrl(`${base}/product/${product.slug}`)}
         jsonLd={{
           '@context': 'https://schema.org',
           '@type': 'Product',

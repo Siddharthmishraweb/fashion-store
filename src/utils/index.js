@@ -58,6 +58,7 @@ function isPlatformHost(host) {
     host === 'localhost' ||
     host === '127.0.0.1' ||
     host.endsWith('.local') ||
+    host.endsWith('.github.io') ||
     host.includes(env.platformDomain)
   )
 }
@@ -68,7 +69,10 @@ export function getHostTenantHint() {
 }
 
 export function resolveTenantKey({ pathname, hostname }) {
-  const match = pathname.match(/^\/store\/([^/]+)/)
+  const relative = env.basePath && pathname.startsWith(env.basePath)
+    ? pathname.slice(env.basePath.length) || '/'
+    : pathname
+  const match = relative.match(/^\/store\/([^/]+)/)
   if (match) return { type: 'slug', value: match[1] }
   if (!isPlatformHost(hostname)) return { type: 'domain', value: hostname }
   return { type: 'platform' }

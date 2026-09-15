@@ -5,7 +5,7 @@ import { CartProvider, WishlistProvider } from '../../context/CommerceContext.js
 import { AnnouncementBar, CartDrawer, Footer, Header, MobileTabBar } from '../navigation/Header.jsx'
 import { EmptyState, ErrorBoundary, ErrorState, Seo, Skeleton } from '../common/index.jsx'
 import { useMedia } from '../../hooks/index.js'
-import { env } from '../../config/env.js'
+import { env, publicUrl } from '../../config/env.js'
 import { cx } from '../../utils/index.js'
 
 export function StorefrontShell() {
@@ -58,7 +58,7 @@ function StorefrontFrame() {
   const [cartOpen, setCartOpen] = useState(false)
   const isDesktop = useMedia('(min-width: 768px)')
   const announce = homepage?.sections?.find((s) => s.type === 'announcement' && s.enabled)
-  const storeUrl = `${window.location.origin}/store/${tenant.slug}`
+  const storeUrl = publicUrl(`/store/${tenant.slug}`)
 
   return (
     <div className={cx('app-shell', !isDesktop && 'has-tabbar')}>
