@@ -9,7 +9,7 @@ export const STOCK_LIBRARY = [
   { id: 'studio-light', label: 'Studio light', photoId: 'photo-1490481651871-ab68de25d43d' },
   { id: 'gold-zari', label: 'Gold zari', photoId: 'photo-1539109136881-3be0616acf4b' },
   { id: 'editorial', label: 'Editorial portrait', photoId: 'photo-1483985988355-763728e1935b' },
-  { id: 'loom', label: 'At the loom', photoId: 'photo-1445205170370-4dba8bf1d44e' },
+  { id: 'loom', label: 'At the loom', photoId: 'photo-1727430228383-aa1fb59db8bf' },
   { id: 'festive', label: 'Festive table', photoId: 'photo-1469334031218-e382a71b716b' },
   { id: 'pastel', label: 'Pastel weave', photoId: 'photo-1539109136881-3be0616acf4b' },
   { id: 'linen', label: 'Linen texture', photoId: 'photo-1558171813-4c8843f2e36c' },
