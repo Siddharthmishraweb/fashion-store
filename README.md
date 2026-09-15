@@ -7,24 +7,52 @@ Multi-tenant marketplace for independent saree and fashion houses — storefront
 - React 19 + Vite storefront
 - Fastify 5 + Postgres API in `server/`
 
-## Scripts
+## Run locally (frontend + backend)
+
+You need **three terminals** from the repo root. The storefront talks to the API through the Vite proxy at `/api`.
+
+### 1. Database
 
 ```bash
-npm install
-npm run dev
-```
-
-API (from `server/`):
-
-```bash
+cd server
+copy .env.example .env
 npm install
 npm run db
+```
+
+Leave this running. It starts a local Postgres (no Docker required).
+
+On first setup, in a **second** `server/` terminal:
+
+```bash
 npm run migrate
 npm run seed
+```
+
+If `server/.env` still points at port `5432`, change `DATABASE_URL` to the URL printed by `npm run db` (usually port `54329`).
+
+### 2. API
+
+```bash
+cd server
 npm run dev
 ```
 
-Copy `.env.example` to `.env` in both the repo root and `server/` before running.
+API listens on [http://localhost:4000](http://localhost:4000).
+
+### 3. Storefront
+
+From the **repo root** (keep `VITE_USE_MOCK=false` in `.env` to use the real API):
+
+```bash
+copy .env.example .env
+npm install
+npm run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173).
+
+Mock-only (no API/Postgres): set `VITE_USE_MOCK=true` in the root `.env`, then only `npm run dev` is required.
 
 ## Demo accounts
 

@@ -139,11 +139,18 @@ export function EmptyState({ title, hint, action }) {
   )
 }
 
+function readableError(message) {
+  if (!message) return 'Please try again in a moment.'
+  if (typeof message === 'string') return message
+  if (typeof message === 'object' && typeof message.message === 'string') return message.message
+  return 'Please try again in a moment.'
+}
+
 export function ErrorState({ message, onRetry }) {
   return (
     <div className="error-state" role="alert">
       <h2>Something went wrong</h2>
-      <p className="muted">{message || 'Please try again in a moment.'}</p>
+      <p className="muted">{readableError(message)}</p>
       {onRetry ? <Button onClick={onRetry}>Try again</Button> : null}
     </div>
   )

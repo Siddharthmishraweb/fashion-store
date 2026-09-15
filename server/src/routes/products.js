@@ -128,9 +128,15 @@ function buildFilters({ tenantId, query, includeUnpublished }) {
 }
 
 export default async function productRoutes(app) {
+  const tenantIdOf = (request) => (
+    clean.text(request.query.tenantId, 60)
+    || (!request.auth?.isCustomer && request.auth?.tenantId)
+    || ''
+  )
+
   /* ------------------------------------------------------------ list */
   app.get('/products', async (request, reply) => {
-    const tenantId = clean.text(request.query.tenantId, 60)
+    const tenantId = tenantIdOf(request)
     if (!tenantId) throw badRequest('A tenantId is required.')
 
     // Only a signed-in operator for this tenant may see unpublished rows, and
@@ -183,7 +189,7 @@ export default async function productRoutes(app) {
 
   /* ----------------------------------------------------------- facets */
   app.get('/products/facets', async (request, reply) => {
-    const tenantId = clean.text(request.query.tenantId, 60)
+    const tenantId = tenantIdOf(request)
     if (!tenantId) throw badRequest('A tenantId is required.')
 
     const key = `facets:${tenantId}`

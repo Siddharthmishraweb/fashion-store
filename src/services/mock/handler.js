@@ -1468,7 +1468,10 @@ const routes = [
       conversion: 3.1,
       abandonment: 62,
       series: db.analytics.platform.series,
-      topProducts: [...storeProducts].sort((a, b) => b.reviewCount - a.reviewCount).slice(0, 5).map((p) => ({ name: p.name, value: p.price })),
+      topProducts: [...storeProducts]
+        .sort((a, b) => (b.soldCount || 0) - (a.soldCount || 0) || (b.reviewCount || 0) - (a.reviewCount || 0))
+        .slice(0, 5)
+        .map((p) => ({ name: p.name, sold: p.soldCount || 0, reviews: p.reviewCount || 0 })),
       recentOrders: [...storeOrders].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 6),
     })
   }],

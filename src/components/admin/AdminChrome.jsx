@@ -316,10 +316,11 @@ export function DataTable({
 }
 
 export function Stat({ label, value, delta, hint }) {
+  const display = value === undefined || value === null || value === '' ? '—' : value
   return (
     <div className="stat">
       <span className="caption">{label}</span>
-      <b>{value}</b>
+      <b>{display}</b>
       {delta !== undefined ? (
         <span className={cx('stat-delta', delta >= 0 ? 'up' : 'down')}>
           {delta >= 0 ? '▲' : '▼'} {Math.abs(delta)}%

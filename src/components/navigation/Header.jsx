@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext.jsx'
 import { useCart, useWishlist } from '../../context/CommerceContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { Button, Drawer, Input, OptimizedImage } from '../common/index.jsx'
+import { IconBag, IconHeart, IconHome, IconMenu, IconSearch, IconUser } from '../common/icons.jsx'
 import { SearchOverlay } from './SearchOverlay.jsx'
 import { engageApi } from '../../services/api/index.js'
 import { useMedia } from '../../hooks/index.js'
@@ -75,10 +76,12 @@ export function Header({ onOpenCart }) {
       <div className="header-main container">
         <div className="header-left">
           {!isDesktop ? (
-            <button type="button" className="icon-btn" aria-label="Open menu" aria-expanded={menu} onClick={() => setMenu(true)}>☰</button>
+            <button type="button" className="icon-btn" aria-label="Open menu" aria-expanded={menu} onClick={() => setMenu(true)}>
+              <IconMenu />
+            </button>
           ) : null}
           <button type="button" className="icon-btn" aria-label={t('action.search')} onClick={() => setSearch(true)}>
-            <span aria-hidden="true">⌕</span>
+            <IconSearch />
           </button>
         </div>
 
@@ -89,14 +92,14 @@ export function Header({ onOpenCart }) {
 
         <div className="header-actions">
           <Link className="icon-btn hide-sm" to={user ? `${base}/account` : `${base}/login`} aria-label={t('action.account')}>
-            <span aria-hidden="true">◌</span>
+            <IconUser />
           </Link>
           <Link className="icon-btn hide-sm" to={`${base}/wishlist`} aria-label={`${t('action.wishlist')}${wishes ? `, ${wishes} items` : ''}`}>
-            <span aria-hidden="true">♡</span>
+            <IconHeart filled={wishes > 0} />
             {wishes ? <span className="count">{wishes}</span> : null}
           </Link>
           <button type="button" className="icon-btn" onClick={onOpenCart} aria-label={`${t('action.cart')}${count ? `, ${count} items` : ''}`}>
-            <span aria-hidden="true">▣</span>
+            <IconBag />
             {count ? <span className="count">{count}</span> : null}
           </button>
         </div>
@@ -152,24 +155,26 @@ export function MobileTabBar({ onOpenCart }) {
   const { tenant } = useTenant()
   const { user } = useAuth()
   const { count } = useCart()
+  const { count: wishes } = useWishlist()
   const base = `/store/${tenant.slug}`
   return (
     <nav className="tabbar" aria-label="Quick navigation">
       <NavLink to={base} end>
-        <span aria-hidden="true">⌂</span>Home
+        <IconHome /><span>Home</span>
       </NavLink>
       <NavLink to={`${base}/products`}>
-        <span aria-hidden="true">⌕</span>Shop
+        <IconSearch /><span>Shop</span>
       </NavLink>
       <NavLink to={`${base}/wishlist`}>
-        <span aria-hidden="true">♡</span>Saved
+        <IconHeart filled={wishes > 0} /><span>Saved</span>
+        {wishes ? <span className="count">{wishes}</span> : null}
       </NavLink>
       <button type="button" onClick={onOpenCart}>
-        <span aria-hidden="true">▣</span>Bag
+        <IconBag /><span>Bag</span>
         {count ? <span className="count">{count}</span> : null}
       </button>
       <NavLink to={user ? `${base}/account` : `${base}/login`}>
-        <span aria-hidden="true">◌</span>{user ? 'Account' : 'Sign in'}
+        <IconUser /><span>{user ? 'Account' : 'Sign in'}</span>
       </NavLink>
     </nav>
   )

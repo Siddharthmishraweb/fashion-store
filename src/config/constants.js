@@ -99,6 +99,16 @@ export const PRODUCT_BADGES = [
   'sale',
 ]
 
+/** Catalogue attributes offered as dropdowns; “None” lets the merchant type a custom value. */
+export const PRODUCT_ATTRIBUTES = {
+  fabric: ['Silk', 'Cotton', 'Organza', 'Chanderi', 'Linen', 'Georgette', 'Tussar', 'Maheshwari', 'Muslin', 'Tissue', 'Muga'],
+  weave: ['Banarasi', 'Kanjivaram', 'Paithani', 'Ikat', 'Jamdani', 'Patola', 'Bandhani', 'Kalamkari', 'Kota', 'Maheshwari', 'Ghicha', 'Muga', 'Zari', 'Plain'],
+  color: ['Green', 'Ruby', 'Gold', 'Ivory', 'Blush', 'Indigo', 'Emerald', 'Teal', 'Sand', 'Maroon', 'Crimson', 'Sage', 'White', 'Ochre', 'Champagne', 'Honey', 'Red', 'Pink', 'Blue', 'Black', 'Yellow', 'Orange', 'Purple', 'Brown', 'Grey'],
+  pattern: ['Floral', 'Floral jaal', 'Temple', 'Zari booti', 'Embroidery', 'Checks', 'Peacock', 'Ikat', 'Geometric', 'Stripes', 'Solid', 'Bandhani', 'Shimmer', 'Narrative', 'Motif', 'Texture', 'Normal'],
+  occasion: ['Wedding', 'Festive', 'Party', 'Everyday', 'Work'],
+  region: ['Banaras', 'Kanchipuram', 'Chanderi', 'Lucknow', 'Rajasthan', 'Maharashtra', 'Telangana', 'Bhagalpur', 'Gujarat', 'Patan', 'Madhya Pradesh', 'Bengal', 'West Bengal', 'Andhra', 'Assam', 'Mumbai'],
+}
+
 export const HOMEPAGE_BLOCKS = [
   { type: 'announcement', label: 'Announcement' },
   { type: 'hero_banner', label: 'Hero Banner' },

@@ -13,6 +13,12 @@ import * as clean from '../lib/sanitize.js'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
+function rate(part, whole) {
+  const den = Number(whole)
+  if (!den) return 0
+  return Math.round((Number(part) / den) * 1000) / 10
+}
+
 async function monthlySeries(tenantId) {
   const rows = await sql`
     select
@@ -25,11 +31,19 @@ async function monthlySeries(tenantId) {
     group by 1
     order by 1
   `
-  return rows.map((row) => ({
-    label: MONTHS[new Date(row.month).getMonth()],
-    gmv: Number(row.gmv),
-    orders: row.orders,
+  const byMonth = new Map(rows.map((row) => {
+    const date = new Date(row.month)
+    return [`${date.getFullYear()}-${date.getMonth()}`, {
+      gmv: Number(row.gmv) || 0,
+      orders: row.orders || 0,
+    }]
   }))
+  const now = new Date()
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth() - (6 - index), 1)
+    const stats = byMonth.get(`${date.getFullYear()}-${date.getMonth()}`) || { gmv: 0, orders: 0 }
+    return { label: MONTHS[date.getMonth()], ...stats }
+  })
 }
 
 export default async function analyticsRoutes(app) {
@@ -78,7 +92,7 @@ export default async function analyticsRoutes(app) {
     const { tenantId } = app.requireTenant(request, 'store.dashboard', clean.text(request.query.tenantId, 60))
 
     const body = await cached(
-      `analytics:store:${tenantId}`,
+      `analytics:store:v2:${tenantId}`,
       [tags.store(tenantId), tags.products(tenantId)],
       async () => {
         const [[store], [stock], [orderStats], [topProducts], [recentOrders], series] = await Promise.all([
@@ -98,16 +112,19 @@ export default async function analyticsRoutes(app) {
             select
               count(*)::int as orders,
               coalesce(sum(total), 0) as sales,
-              count(*) filter (where status = 'placed')::int as "awaitingAction"
+              count(*) filter (where status = 'placed')::int as "awaitingAction",
+              count(*) filter (where status in ('cancelled', 'returned', 'refunded'))::int as lost
             from orders where tenant_id = ${tenantId}
           `,
           sql`
-            select coalesce(jsonb_agg(jsonb_build_object('name', name, 'value', value) order by value desc), '[]')::text as payload
+            select coalesce(jsonb_agg(jsonb_build_object(
+              'name', name, 'sold', sold, 'reviews', reviews
+            ) order by sold desc, reviews desc), '[]')::text as payload
             from (
-              select name, sold_count as value
+              select name, sold_count as sold, review_count as reviews
               from products
               where tenant_id = ${tenantId}
-              order by sold_count desc, rating desc
+              order by sold_count desc, review_count desc, rating desc
               limit 5
             ) as ranked
           `,
@@ -122,17 +139,23 @@ export default async function analyticsRoutes(app) {
         ])
 
         const sales = Number(orderStats.sales) || Number(store?.gmv || 0)
+        const orders = orderStats.orders || store?.orders_count || 0
+        const customers = store?.customers_count || 0
+        const conversion = customers > 0 ? rate(orders, customers) : (orders > 0 ? 100 : 0)
+        const abandonment = rate(orderStats.lost, orders)
         return [
           '{"sales":', sales,
           ',"revenue":', Math.round(sales * 0.82),
-          ',"orders":', orderStats.orders || store?.orders_count || 0,
+          ',"orders":', orders,
           ',"awaitingAction":', orderStats.awaitingAction,
           ',"products":', stock.products,
           ',"publishedProducts":', stock.publishedProducts,
-          ',"customers":', store?.customers_count || 0,
+          ',"customers":', customers,
           ',"inventory":', stock.inventory,
           ',"lowStock":', stock.lowStock,
           ',"outOfStock":', stock.outOfStock,
+          ',"conversion":', conversion,
+          ',"abandonment":', abandonment,
           ',"series":', JSON.stringify(series),
           ',"topProducts":', topProducts.payload,
           ',"recentOrders":', recentOrders.payload,

@@ -4,7 +4,7 @@ import { analyticsApi, ordersApi } from '../../services/api/index.js'
 import { useAsync } from '../../hooks/index.js'
 import { MiniChart, Stat } from '../../components/admin/AdminChrome.jsx'
 import { EmptyState, ErrorState, Skeleton, StatusPill } from '../../components/common/index.jsx'
-import { formatCurrency, formatDate } from '../../utils/index.js'
+import { formatCurrency, formatDate, formatPercent } from '../../utils/index.js'
 
 export default function AdminDashboard() {
   const { user } = useAuth()
@@ -15,6 +15,9 @@ export default function AdminDashboard() {
   if (error) return <ErrorState message={error} onRetry={refetch} />
   if (!data) return null
 
+  const firstName = user?.name?.trim().split(/\s+/)[0] || 'there'
+  const topProducts = Array.isArray(data.topProducts) ? data.topProducts : []
+  const series = Array.isArray(data.series) ? data.series : []
   const recent = orders.data?.items || data.recentOrders || []
   const needsAttention = data.outOfStock > 0 || data.lowStock > 0
 
@@ -23,7 +26,7 @@ export default function AdminDashboard() {
       <div className="admin-top">
         <div>
           <h1>Dashboard</h1>
-          <p className="muted">Welcome back, {user.name.split(' ')[0]}.</p>
+          <p className="muted">Welcome back, {firstName}.</p>
         </div>
         <Link className="btn" to="/admin/products/new">Add product</Link>
       </div>
@@ -31,7 +34,7 @@ export default function AdminDashboard() {
       {needsAttention ? (
         <div className="notice" role="status">
           <strong>Stock needs attention.</strong>{' '}
-          {data.outOfStock} product(s) are out of stock and {data.lowStock} are running low.{' '}
+          {data.outOfStock || 0} product(s) are out of stock and {data.lowStock || 0} are running low.{' '}
           <Link to="/admin/inventory">Open inventory</Link>
         </div>
       ) : null}
@@ -39,29 +42,33 @@ export default function AdminDashboard() {
       <div className="stats">
         <Stat label="Sales" value={formatCurrency(data.sales)} />
         <Stat label="Your revenue" value={formatCurrency(data.revenue)} />
-        <Stat label="Orders" value={data.orders} />
-        <Stat label="Products" value={data.products} hint={`${data.publishedProducts} live`} />
-        <Stat label="Customers" value={data.customers} />
-        <Stat label="Units in stock" value={data.inventory} />
-        <Stat label="Conversion" value={`${data.conversion}%`} />
-        <Stat label="Cart abandonment" value={`${data.abandonment}%`} />
+        <Stat label="Orders" value={data.orders ?? 0} />
+        <Stat label="Products" value={data.products ?? 0} hint={`${data.publishedProducts ?? 0} live`} />
+        <Stat label="Customers" value={data.customers ?? 0} />
+        <Stat label="Units in stock" value={data.inventory ?? 0} />
+        <Stat label="Conversion" value={formatPercent(data.conversion)} />
+        <Stat label="Cart abandonment" value={formatPercent(data.abandonment)} />
       </div>
 
       <div className="dash-grid">
         <div className="admin-card">
           <h3>Gross merchandise value</h3>
-          <MiniChart series={data.series} />
+          {series.some((point) => (point.gmv || point.value || 0) > 0) ? (
+            <MiniChart series={series} />
+          ) : (
+            <p className="muted">Sales will appear here after your first paid order.</p>
+          )}
         </div>
         <div className="admin-card">
-          <h3>Most reviewed</h3>
-          {data.topProducts.length === 0 ? (
+          <h3>Top products</h3>
+          {topProducts.length === 0 ? (
             <p className="muted">No products yet.</p>
           ) : (
             <ul className="plain-list">
-              {data.topProducts.map((p) => (
+              {topProducts.map((p) => (
                 <li key={p.name}>
                   <span className="clamp-1">{p.name}</span>
-                  <b>{formatCurrency(p.value)}</b>
+                  <b>{p.sold || 0} sold</b>
                 </li>
               ))}
             </ul>

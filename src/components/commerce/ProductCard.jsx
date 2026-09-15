@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Badge, Button, OptimizedImage } from '../common/index.jsx'
+import { IconHeart } from '../common/icons.jsx'
 import { cx, discountPercent, formatCurrency } from '../../utils/index.js'
 import { useCart, useWishlist } from '../../context/CommerceContext.jsx'
 import { useI18n } from '../../context/I18nContext.jsx'
@@ -77,15 +78,8 @@ export function ProductCard({ product, base, showPrice = true, priority, onQuick
           aria-pressed={wished}
           onClick={() => toggle(product)}
         >
-          <Heart filled={wished} />
+          <IconHeart filled={wished} />
         </button>
-
-        <div className="card-actions">
-          {onQuickView ? <Button variant="ghost" size="sm" onClick={() => onQuickView(product)}>{t('action.quickView')}</Button> : null}
-          <Button size="sm" disabled={soldOut} onClick={() => quickAdd(product)}>
-            {soldOut ? 'Sold out' : t('action.quickAdd')}
-          </Button>
-        </div>
       </div>
 
       <div className="card-body">
@@ -108,6 +102,14 @@ export function ProductCard({ product, base, showPrice = true, priority, onQuick
             ))}
           </div>
         ) : null}
+        <div className="card-actions">
+          {onQuickView ? (
+            <Button variant="ghost" size="sm" onClick={() => onQuickView(product)}>{t('action.quickView')}</Button>
+          ) : null}
+          <Button size="sm" disabled={soldOut} onClick={() => quickAdd(product)}>
+            {soldOut ? t('action.soldOut') : t('action.quickAdd')}
+          </Button>
+        </div>
       </div>
     </article>
   )
@@ -131,10 +133,3 @@ export function ProductSlider({ products, base, ...rest }) {
   )
 }
 
-function Heart({ filled }) {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
-      <path d="M12 21s-7-4.6-9.5-8.2C.4 9.6 2.2 5.8 6 5.2c2-.3 3.4.6 4 1.6.6-1 2-1.9 4-1.6 3.8.6 5.6 4.4 3.5 7.6C19 16.4 12 21 12 21z" />
-    </svg>
-  )
-}

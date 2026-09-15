@@ -183,7 +183,7 @@ export function WishlistPage() {
 
   if (!items.length) {
     return (
-      <div className="container" style={{ padding: '3rem 0' }}>
+      <div className="container wishlist-page">
         <Seo title={`Wishlist · ${tenant.name}`} noindex />
         <EmptyState
           title={t('empty.wishlist')}
@@ -209,24 +209,26 @@ export function WishlistPage() {
   }
 
   return (
-    <div className="container" style={{ padding: '1.5rem 0 3rem' }}>
+    <div className="container wishlist-page">
       <Seo title={`Wishlist (${items.length}) · ${tenant.name}`} noindex />
-      <div className="plp-head">
+      <div className="wishlist-head">
         <h1>Wishlist</h1>
         <Button variant="ghost" onClick={share}>Share wishlist</Button>
       </div>
-      <ul className="cart-lines">
+      <ul className="wishlist-lines">
         {items.map((item) => (
-          <li className="cart-line" key={item.id}>
-            <OptimizedImage src={item.image} alt="" sizes="110px" />
-            <div>
+          <li className="wishlist-line" key={item.id}>
+            <Link className="wishlist-thumb" to={`${base}/product/${item.slug}`}>
+              <OptimizedImage src={item.image} alt="" width={96} height={128} sizes="96px" />
+            </Link>
+            <div className="wishlist-copy">
               <Link to={`${base}/product/${item.slug}`}><b>{item.name}</b></Link>
               <p>{formatCurrency(item.price)}</p>
               <p className="muted">{item.inventory > 0 ? 'In stock' : 'Out of stock — check back soon'}</p>
-              <div className="cart-line-actions">
-                <Button size="sm" disabled={item.inventory <= 0} onClick={() => add(item)}>Move to bag</Button>
-                <button type="button" className="link-btn" onClick={() => remove(item.id)}>Remove</button>
-              </div>
+            </div>
+            <div className="wishlist-actions">
+              <Button size="sm" disabled={item.inventory <= 0} onClick={() => add(item)}>Move to bag</Button>
+              <button type="button" className="link-btn" onClick={() => remove(item.id)}>Remove</button>
             </div>
           </li>
         ))}

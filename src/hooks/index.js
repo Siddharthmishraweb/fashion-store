@@ -2,13 +2,17 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { STORAGE_KEYS } from '../config/env.js'
 import { readStorage, writeStorage } from '../utils/index.js'
 
-export function useAsync(fn, deps = []) {
-  const [state, setState] = useState({ data: null, loading: true, error: null })
+export function useAsync(fn, deps = [], { enabled = true } = {}) {
+  const [state, setState] = useState({ data: null, loading: Boolean(enabled), error: null })
   const [nonce, setNonce] = useState(0)
   const fnRef = useRef(fn)
   fnRef.current = fn
 
   useEffect(() => {
+    if (!enabled) {
+      setState({ data: null, loading: false, error: null })
+      return undefined
+    }
     let active = true
     setState((s) => ({ ...s, loading: true, error: null }))
     Promise.resolve()
@@ -17,13 +21,19 @@ export function useAsync(fn, deps = []) {
         if (active) setState({ data, loading: false, error: null })
       })
       .catch((error) => {
-        if (active) setState({ data: null, loading: false, error: error.message || 'Something went wrong' })
+        if (active) {
+          setState({
+            data: null,
+            loading: false,
+            error: error.payload?.message || error.message || 'Something went wrong',
+          })
+        }
       })
     return () => {
       active = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [...deps, nonce])
+  }, [...deps, nonce, enabled])
 
   const refetch = useCallback(() => setNonce((n) => n + 1), [])
   return { ...state, refetch }
@@ -102,7 +112,8 @@ export function useSubmit(handler) {
     try {
       return await handler(...args)
     } catch (err) {
-      if (mounted.current) setError(err.message || 'Something went wrong')
+      const message = err.payload?.message || err.message || 'Something went wrong'
+      if (mounted.current) setError(message)
       return undefined
     } finally {
       if (mounted.current) setPending(false)

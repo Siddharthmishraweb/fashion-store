@@ -25,8 +25,8 @@ const publicUser = (row) => ({
   email: row.email,
   phone: row.phone,
   role: row.role,
-  tenantId: row.tenant_id,
-  createdAt: row.created_at,
+  tenantId: row.tenant_id || row.tenantId || null,
+  createdAt: row.created_at || row.createdAt,
 })
 
 async function lockRemainingMs(keys) {

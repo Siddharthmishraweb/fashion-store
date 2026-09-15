@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Button, Input, OptimizedImage, ResponsiveImage } from '../common/index.jsx'
+import { Button, EmptyState, Input, OptimizedImage, ResponsiveImage } from '../common/index.jsx'
 import { HeroCarousel } from '../commerce/HeroCarousel.jsx'
 import { ProductGrid, ProductSlider } from '../commerce/ProductCard.jsx'
 import { engageApi } from '../../services/api/index.js'
 import { useToast } from '../../context/ToastContext.jsx'
 import { isEmail, safeUrl } from '../../utils/security.js'
+import { withinDateRange } from '../../utils/index.js'
 
 function SectionHead({ title, subtitle }) {
   if (!title) return null
@@ -15,6 +16,13 @@ function SectionHead({ title, subtitle }) {
       <h2>{title}</h2>
     </div>
   )
+}
+
+function facetValues(facets, key) {
+  const value = facets?.[key]
+  if (Array.isArray(value)) return value.map((item) => String(item)).filter(Boolean)
+  if (value == null || value === '') return []
+  return [String(value)]
 }
 
 function NewsletterSection({ cfg }) {
@@ -64,34 +72,78 @@ function NewsletterSection({ cfg }) {
   )
 }
 
+function liveBanners(banners) {
+  return (banners || []).filter((banner) => (
+    banner
+    && banner.status !== 'draft'
+    && banner.active !== false
+    && (banner.desktopImage || banner.mobileImage || banner.tabletImage)
+    && withinDateRange(banner.startDate, banner.endDate)
+  ))
+}
+
 export function HomepageRenderer({
   homepage,
   banners = [],
   categories = [],
   collections = [],
   productsByCollection = {},
+  latestProducts = [],
   facets,
   base,
   testimonials = [],
   instagram = [],
 }) {
   const sections = (homepage?.sections || []).filter((s) => s.enabled)
+  const catalogue = latestProducts.length
+    ? latestProducts
+    : Object.values(productsByCollection).flat().filter(Boolean)
+  const slides = liveBanners(banners)
+  const hasHero = sections.some((section) => section.type === 'carousel' || section.type === 'hero_banner')
+
   return (
     <div>
-      {sections.map((section) => (
-        <Block
-          key={section.id}
-          section={section}
-          banners={banners}
-          categories={categories}
-          collections={collections}
-          productsByCollection={productsByCollection}
-          facets={facets}
+      {!hasHero && slides.length ? (
+        <HeroCarousel
+          banners={slides}
+          config={{ autoplay: slides.length > 1, showArrows: slides.length > 1, showDots: slides.length > 1 }}
           base={base}
-          testimonials={testimonials}
-          instagram={instagram}
         />
-      ))}
+      ) : null}
+
+      {sections.length ? (
+        sections.map((section) => (
+          <Block
+            key={section.id}
+            section={section}
+            banners={slides}
+            categories={categories}
+            collections={collections}
+            productsByCollection={productsByCollection}
+            latestProducts={catalogue}
+            facets={facets}
+            base={base}
+            testimonials={testimonials}
+            instagram={instagram}
+          />
+        ))
+      ) : (
+        <section className="section">
+          <div className="container">
+            {catalogue.length ? (
+              <>
+                <SectionHead title="New in" subtitle="Just added to the boutique" />
+                <ProductGrid products={catalogue} base={base} />
+              </>
+            ) : (
+              <EmptyState
+                title="This boutique is getting dressed"
+                hint="Publish a product and it will appear here."
+              />
+            )}
+          </div>
+        </section>
+      )}
     </div>
   )
 }
@@ -102,9 +154,10 @@ const FALLBACK_FACETS = {
   region: ['Banaras', 'Kanchipuram', 'Bengal', 'Rajasthan'],
 }
 
-function Block({ section, banners, categories, productsByCollection, facets, base, testimonials, instagram }) {
+function Block({ section, banners, categories, productsByCollection, latestProducts = [], facets, base, testimonials, instagram }) {
   const cfg = section.config || {}
   const products = productsByCollection[cfg.collectionId] || []
+  const showcase = products.length ? products : latestProducts
   const cta = safeUrl(cfg.ctaUrl, { allowExternal: false }) || `${base}/products`
 
   switch (section.type) {
@@ -141,12 +194,12 @@ function Block({ section, banners, categories, productsByCollection, facets, bas
     }
 
     case 'product_grid':
-      if (!products.length) return null
+      if (!showcase.length) return null
       return (
         <section className="section">
           <div className="container">
             <SectionHead title={cfg.title} subtitle={cfg.subtitle} />
-            <ProductGrid products={products} base={base} columns={cfg.columnsDesktop} />
+            <ProductGrid products={showcase} base={base} columns={cfg.columnsDesktop} />
           </div>
         </section>
       )
@@ -154,13 +207,12 @@ function Block({ section, banners, categories, productsByCollection, facets, bas
     case 'product_slider':
     case 'recommended':
     case 'recently_viewed': {
-      const list = products.length ? products : Object.values(productsByCollection)[0] || []
-      if (!list.length) return null
+      if (!showcase.length) return null
       return (
         <section className="section">
           <div className="container">
             <SectionHead title={cfg.title || 'Selected for you'} />
-            <ProductSlider products={list} base={base} />
+            <ProductSlider products={showcase} base={base} />
           </div>
         </section>
       )
@@ -208,7 +260,7 @@ function Block({ section, banners, categories, productsByCollection, facets, bas
     case 'shop_by_occasion':
     case 'shop_by_region': {
       const key = section.type.replace('shop_by_', '')
-      const values = (facets?.[key]?.length ? facets[key] : FALLBACK_FACETS[key] || []).slice(0, 10)
+      const values = (facetValues(facets, key).length ? facetValues(facets, key) : FALLBACK_FACETS[key] || []).slice(0, 10)
       if (!values.length) return null
       return (
         <section className="section">

@@ -43,6 +43,10 @@ export const FONT_CATALOG = {
     name: 'Inter',
     href: 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap',
   },
+  devanagari: {
+    name: 'Noto Sans Devanagari',
+    href: 'https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap',
+  },
 }
 
 const loadedFonts = new Set()

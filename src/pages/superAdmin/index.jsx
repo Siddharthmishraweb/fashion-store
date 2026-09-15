@@ -15,7 +15,7 @@ import {
 } from '../../components/common/index.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { DEFAULT_STORE_SLUG, env } from '../../config/env.js'
-import { formatCurrency, formatDate, slugify } from '../../utils/index.js'
+import { formatCurrency, formatDate, formatPercent, slugify } from '../../utils/index.js'
 import { passwordIssues } from '../../utils/security.js'
 import { THEMES } from '../../theme/themes.js'
 
@@ -39,7 +39,7 @@ export default function SuperDashboard() {
         <Stat label="Orders" value={data.orders} />
         <Stat label="GMV" value={formatCurrency(data.gmv)} />
         <Stat label="Platform revenue" value={formatCurrency(data.revenue)} />
-        <Stat label="Conversion" value={`${data.conversion}%`} />
+        <Stat label="Conversion" value={formatPercent(data.conversion)} />
       </div>
       <div className="admin-card">
         <h3>Gross merchandise value</h3>

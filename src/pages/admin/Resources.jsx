@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
@@ -29,8 +29,8 @@ import {
   Textarea,
   Toggle,
 } from '../../components/common/index.jsx'
-import { ORDER_STATUS, ROLES } from '../../config/constants.js'
-import { downloadFile, formatCurrency, formatDate, slugify, toCsv } from '../../utils/index.js'
+import { ORDER_STATUS, PRODUCT_ATTRIBUTES, ROLES } from '../../config/constants.js'
+import { cx, downloadFile, formatCurrency, formatDate, slugify, toCsv } from '../../utils/index.js'
 import { isEmail, isPhone, safeImageUrl } from '../../utils/security.js'
 
 const PAGE_SIZE = 20
@@ -47,12 +47,14 @@ export function ProductsAdmin() {
   const [confirmBulk, setConfirmBulk] = useState(false)
   const [busy, setBusy] = useState(false)
   const search = useDebounced(q, 300)
+  const tenantId = user?.tenantId
 
   const { data, loading, error, refetch } = useAsync(
-    () => productsApi.list({ tenantId: user.tenantId, q: search, sort, page, limit: PAGE_SIZE }),
-    [user.tenantId, search, sort, page],
+    () => productsApi.list({ tenantId, q: search, sort, page, limit: PAGE_SIZE }),
+    [tenantId, search, sort, page],
+    { enabled: Boolean(tenantId) },
   )
-  const rows = data?.items || []
+  const rows = Array.isArray(data?.items) ? data.items : []
 
   const runBulk = async (action) => {
     setBusy(true)
@@ -86,6 +88,14 @@ export function ProductsAdmin() {
     push(`Exported ${source.length} product(s)`)
   }
 
+  if (!tenantId) {
+    return (
+      <EmptyState
+        title="This account is not linked to a store"
+        hint="Sign in with a store-owner login (for example admin@atelier-noor.test) before managing products."
+      />
+    )
+  }
   if (error) return <ErrorState message={error} onRetry={refetch} />
 
   return (
@@ -221,30 +231,49 @@ const PRODUCT_FIELDS = [
   ['price', 'Selling price (₹)', { type: 'number', required: true, min: 1 }],
   ['mrp', 'MRP (₹)', { type: 'number', min: 0 }],
   ['inventory', 'Stock on hand', { type: 'number', min: 0 }],
-  ['fabric', 'Fabric'],
-  ['weave', 'Weave'],
-  ['color', 'Primary colour'],
-  ['pattern', 'Pattern'],
-  ['occasion', 'Occasion'],
-  ['region', 'Region'],
+  ['fabric', 'Fabric', { options: PRODUCT_ATTRIBUTES.fabric }],
+  ['weave', 'Weave', { options: PRODUCT_ATTRIBUTES.weave }],
+  ['color', 'Primary colour', { options: PRODUCT_ATTRIBUTES.color }],
+  ['pattern', 'Pattern', { options: PRODUCT_ATTRIBUTES.pattern }],
+  ['occasion', 'Occasion', { options: PRODUCT_ATTRIBUTES.occasion }],
+  ['region', 'Region', { options: PRODUCT_ATTRIBUTES.region }],
   ['brand', 'Label'],
 ]
 
-export function ProductEditor() {
-  const { id } = useParams()
-  const { user } = useAuth()
-  const { push } = useToast()
-  const navigate = useNavigate()
-  const isNew = !id || id === 'new'
-
-  const { data, loading } = useAsync(
-    () => (isNew ? Promise.resolve(null) : productsApi.get(id, user.tenantId)),
-    [id],
+function ComboField({ label, value = '', options, onChange, error }) {
+  const id = useId()
+  const listed = options.includes(value)
+  return (
+    <div className={cx('field combo-field', error && 'field-error')}>
+      <label htmlFor={id}>{label}</label>
+      <select
+        id={id}
+        className="select"
+        value={listed ? value : ''}
+        onChange={(e) => onChange(e.target.value)}
+        aria-invalid={error ? 'true' : undefined}
+      >
+        <option value="">None</option>
+        {options.map((opt) => (
+          <option key={opt} value={opt}>{opt}</option>
+        ))}
+      </select>
+      {!listed ? (
+        <input
+          className="input"
+          value={value}
+          placeholder={`Type ${label.toLowerCase()}`}
+          onChange={(e) => onChange(e.target.value)}
+          aria-label={`Custom ${label}`}
+        />
+      ) : null}
+      {error ? <span className="field-msg" role="alert">{error}</span> : null}
+    </div>
   )
-  const product = data?.product
-  const [draft, setDraft] = useState(null)
+}
 
-  const form = draft || {
+function emptyProductForm() {
+  return {
     name: '',
     sku: '',
     description: '',
@@ -263,29 +292,112 @@ export function ProductEditor() {
     returns: '',
     published: false,
     images: [],
-    ...(product || {}),
   }
-  const set = (key, value) => setDraft({ ...form, [key]: value })
+}
+
+function validateProductForm(form, tenantId) {
+  const errors = {}
+  const name = String(form.name || '').trim()
+  const price = Number(form.price)
+  const mrp = form.mrp === '' || form.mrp == null ? 0 : Number(form.mrp)
+  const inventory = Number(form.inventory)
+  if (!tenantId) errors.form = 'This account is not linked to a store, so the product cannot be saved.'
+  if (!name) errors.name = 'A product name is required.'
+  if (!Number.isFinite(price) || price <= 0) errors.price = 'Set a selling price above zero.'
+  if (form.mrp !== '' && form.mrp != null && (!Number.isFinite(mrp) || mrp < 0)) errors.mrp = 'MRP must be a number.'
+  if (Number.isFinite(price) && Number.isFinite(mrp) && mrp > 0 && mrp < price) {
+    errors.mrp = 'MRP cannot be lower than the selling price.'
+  }
+  if (!Number.isFinite(inventory) || inventory < 0) errors.inventory = 'Stock cannot be negative.'
+  const images = []
+  ;(form.images || []).forEach((img, i) => {
+    const src = String(img?.src || '').trim()
+    if (!src) return
+    if (!safeImageUrl(src)) errors[`image-${i}`] = 'Use an https:// image address or a /local path.'
+    else images.push({ src: safeImageUrl(src), alt: img.alt || name })
+  })
+  return {
+    errors,
+    payload: {
+      name,
+      sku: String(form.sku || '').trim(),
+      description: form.description || '',
+      price,
+      mrp: mrp || price,
+      inventory: Number.isFinite(inventory) ? inventory : 0,
+      fabric: String(form.fabric || '').trim(),
+      weave: String(form.weave || '').trim(),
+      color: String(form.color || '').trim(),
+      pattern: String(form.pattern || '').trim(),
+      occasion: String(form.occasion || '').trim(),
+      region: String(form.region || '').trim(),
+      brand: String(form.brand || '').trim(),
+      care: form.care || '',
+      shipping: form.shipping || '',
+      returns: form.returns || '',
+      tenantId,
+      images,
+    },
+  }
+}
+
+export function ProductEditor() {
+  const { id } = useParams()
+  const { user } = useAuth()
+  const { push } = useToast()
+  const navigate = useNavigate()
+  const isNew = !id || id === 'new'
+  const tenantId = user?.tenantId
+
+  const { data, loading, error: loadError } = useAsync(
+    () => productsApi.get(id, tenantId),
+    [id, tenantId],
+    { enabled: Boolean(!isNew && id && tenantId) },
+  )
+  const product = data?.product
+  const [draft, setDraft] = useState(null)
+  const [fieldErrors, setFieldErrors] = useState({})
+
+  const form = {
+    ...emptyProductForm(),
+    ...(product || {}),
+    ...(draft || {}),
+    images: draft?.images || product?.images || [],
+  }
+  const set = (key, value) => {
+    setFieldErrors((current) => {
+      if (!current[key]) return current
+      const next = { ...current }
+      delete next[key]
+      return next
+    })
+    setDraft({ ...form, [key]: value })
+  }
 
   const { submit, pending, error } = useSubmit(async (publish) => {
-    const payload = {
-      ...form,
-      published: publish ?? form.published,
-      price: Number(form.price) || 0,
-      mrp: Number(form.mrp) || 0,
-      inventory: Number(form.inventory) || 0,
-      tenantId: user.tenantId,
-      images: (form.images || []).filter((img) => safeImageUrl(img.src)),
+    const { errors, payload } = validateProductForm(form, tenantId)
+    if (Object.keys(errors).length) {
+      setFieldErrors(errors)
+      throw new Error(errors.form || 'Fix the highlighted fields, then save again.')
     }
-    if (!payload.name.trim()) throw new Error('A product name is required.')
-    if (payload.price <= 0) throw new Error('Set a selling price above zero.')
+    setFieldErrors({})
+    payload.published = publish ?? Boolean(form.published)
     if (isNew) await productsApi.create(payload)
     else await productsApi.update(id, payload)
-    push(publish ? 'Product published' : 'Product saved')
+    push(payload.published ? 'Product published' : 'Product saved')
     navigate('/admin/products')
   })
 
+  if (!tenantId) {
+    return (
+      <EmptyState
+        title="This account is not linked to a store"
+        hint="Sign in with a store-owner login before adding products."
+      />
+    )
+  }
   if (loading) return <p className="muted">Loading product…</p>
+  if (loadError) return <ErrorState message={loadError} />
 
   return (
     <div>
@@ -297,23 +409,36 @@ export function ProductEditor() {
       <div className="editor-grid">
         <form
           className="admin-card"
+          noValidate
           onSubmit={(e) => {
             e.preventDefault()
-            submit()
+            submit(false)
           }}
         >
           {error ? <p className="form-error" role="alert">{error}</p> : null}
           <div className="grid-2">
             {PRODUCT_FIELDS.map(([key, label, opts = {}]) => (
-              <Input
-                key={key}
-                label={label}
-                value={form[key] ?? ''}
-                required={opts.required}
-                type={opts.type}
-                min={opts.min}
-                onChange={(e) => set(key, e.target.value)}
-              />
+              opts.options ? (
+                <ComboField
+                  key={key}
+                  label={label}
+                  value={form[key] ?? ''}
+                  options={opts.options}
+                  error={fieldErrors[key]}
+                  onChange={(value) => set(key, value)}
+                />
+              ) : (
+                <Input
+                  key={key}
+                  label={label}
+                  value={form[key] ?? ''}
+                  required={opts.required}
+                  type={opts.type}
+                  min={opts.min}
+                  error={fieldErrors[key]}
+                  onChange={(e) => set(key, e.target.value)}
+                />
+              )
             ))}
           </div>
           <Textarea label="Description" rows={5} value={form.description} onChange={(e) => set('description', e.target.value)} />
@@ -328,20 +453,22 @@ export function ProductEditor() {
             onChange={(v) => set('published', v)}
           />
           <div className="form-actions">
-            <Button type="submit" variant="secondary" loading={pending}>Save</Button>
-            <Button loading={pending} onClick={() => submit(true)}>Save & publish</Button>
+            <Button type="submit" variant="secondary" loading={pending}>Save draft</Button>
+            <Button type="button" loading={pending} onClick={() => submit(true)}>Save & publish</Button>
           </div>
         </form>
 
         <aside className="admin-card">
           <h3>Images</h3>
-          <p className="muted">The first image is used on listing pages.</p>
+          <p className="muted">The first valid image is used on listing pages. Paste an https:// address, or leave a row blank to skip it.</p>
           {(form.images || []).map((img, i) => (
             <div key={`${img.src}-${i}`} className="image-row">
-              {safeImageUrl(img.src) ? <img src={img.src} alt="" /> : <span className="image-picker-thumb empty" />}
+              {safeImageUrl(img.src) ? <img src={safeImageUrl(img.src)} alt="" /> : <span className="image-picker-thumb empty" />}
               <Input
                 label={`Image ${i + 1} URL`}
                 value={img.src}
+                error={fieldErrors[`image-${i}`]}
+                placeholder="https://…"
                 onChange={(e) => {
                   const next = [...form.images]
                   next[i] = { ...next[i], src: e.target.value }

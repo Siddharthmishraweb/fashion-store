@@ -8,6 +8,12 @@ export function formatCurrency(amount, currency = 'INR') {
   }).format(Number(amount) || 0)
 }
 
+export function formatPercent(value) {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return '—'
+  return `${Number.isInteger(n) ? n : n.toFixed(1)}%`
+}
+
 export function discountPercent(price, mrp) {
   if (!mrp || mrp <= price) return 0
   return Math.round(((mrp - price) / mrp) * 100)

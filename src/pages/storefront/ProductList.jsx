@@ -32,6 +32,13 @@ const FACET_GROUPS = [
   ['pattern', 'Pattern'],
 ]
 
+function facetValues(facets, key) {
+  const value = facets?.[key]
+  if (Array.isArray(value)) return value.map((item) => String(item)).filter(Boolean)
+  if (value == null || value === '') return []
+  return [String(value)]
+}
+
 const SORTS = [
   { value: 'newest', label: 'Newest first' },
   { value: 'price_asc', label: 'Price: low to high' },
@@ -80,8 +87,13 @@ export default function ProductListPage({ mode = 'category' }) {
   const { data, loading, error, refetch } = useAsync(
     () => productsApi.list(query),
     [tenant.id, params.toString(), category, mode],
+    { enabled: Boolean(tenant.id) },
   )
-  const { data: facets } = useAsync(() => productsApi.facets(tenant.id), [tenant.id])
+  const { data: facets } = useAsync(
+    () => productsApi.facets(tenant.id),
+    [tenant.id],
+    { enabled: Boolean(tenant.id) },
+  )
 
   const title = titleFor(mode, category, searchTerm)
   const base = `/store/${tenant.slug}`
@@ -150,8 +162,8 @@ export default function ProductListPage({ mode = 'category' }) {
             onChange={(e) => setSingle('maxPrice', e.target.value)}
           />
         </div>
-        {facets?.priceRange?.[1] ? (
-          <p className="caption">Catalogue range {formatCurrency(facets.priceRange[0])} – {formatCurrency(facets.priceRange[1])}</p>
+        {facetValues(facets, 'priceRange').length === 2 && Number(facets.priceRange[1]) > 0 ? (
+          <p className="caption">Catalogue range {formatCurrency(Number(facets.priceRange[0]))} – {formatCurrency(Number(facets.priceRange[1]))}</p>
         ) : null}
       </div>
 
@@ -168,7 +180,7 @@ export default function ProductListPage({ mode = 'category' }) {
       </div>
 
       {FACET_GROUPS.map(([key, label]) => {
-        const values = facets?.[key] || []
+        const values = facetValues(facets, key)
         if (!values.length) return null
         const selected = params.getAll(key)
         return (
@@ -246,7 +258,7 @@ export default function ProductListPage({ mode = 'category' }) {
             <div className="product-grid"><Skeleton count={8} height={340} radius={2} /></div>
           ) : error ? (
             <ErrorState message={error} onRetry={refetch} />
-          ) : data?.items?.length ? (
+          ) : Array.isArray(data?.items) && data.items.length ? (
             <>
               <ProductGrid
                 products={data.items}
