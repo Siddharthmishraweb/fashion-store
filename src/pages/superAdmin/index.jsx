@@ -16,6 +16,7 @@ import {
 import { useToast } from '../../context/ToastContext.jsx'
 import { DEFAULT_STORE_SLUG, env } from '../../config/env.js'
 import { formatCurrency, formatDate, slugify } from '../../utils/index.js'
+import { passwordIssues } from '../../utils/security.js'
 import { THEMES } from '../../theme/themes.js'
 
 export default function SuperDashboard() {
@@ -53,14 +54,26 @@ export function StoresAdmin() {
   const [q, setQ] = useState('')
   const search = useDebounced(q, 300)
   const { data, loading, error, refetch } = useAsync(() => storesApi.list({ q: search, limit: 50 }), [search])
-  const [form, setForm] = useState({ name: '', slug: '', email: '', phone: '', city: '', themeId: THEMES[0].id })
+  const [form, setForm] = useState({
+    name: '', slug: '', ownerName: '', email: '', password: '', phone: '', city: '', themeId: THEMES[0].id,
+  })
   const [confirming, setConfirming] = useState(null)
 
   const { submit, pending, error: formError } = useSubmit(async () => {
-    const payload = { ...form, slug: slugify(form.slug || form.name) }
+    const payload = {
+      ...form,
+      slug: slugify(form.slug || form.name),
+      ownerName: form.ownerName,
+      ownerPassword: form.password,
+    }
+    delete payload.password
+    if (!form.name.trim()) throw new Error('A business name is required.')
+    if (!form.email.trim()) throw new Error('An owner email is required.')
+    const issues = passwordIssues(form.password)
+    if (issues.length) throw new Error(`Owner password needs ${issues.join(', ')}.`)
     const store = await storesApi.create(payload)
-    push(`${store.name} is live at /store/${store.slug}`)
-    setForm({ name: '', slug: '', email: '', phone: '', city: '', themeId: THEMES[0].id })
+    push(`${store.name} is live at /store/${store.slug}. The owner can sign in at /login.`)
+    setForm({ name: '', slug: '', ownerName: '', email: '', password: '', phone: '', city: '', themeId: THEMES[0].id })
     refetch()
   })
 
@@ -86,7 +99,16 @@ export function StoresAdmin() {
             value={form.slug}
             onChange={(e) => setForm({ ...form, slug: e.target.value })}
           />
-          <Input label="Owner email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <Input label="Owner name" value={form.ownerName} onChange={(e) => setForm({ ...form, ownerName: e.target.value })} placeholder="House owner" />
+          <Input label="Owner email" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <Input
+            label="Owner password"
+            type="password"
+            required
+            hint="At least 8 characters, with upper, lower, and a number"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+          />
           <Input label="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           <Input label="City" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
           <Select

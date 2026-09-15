@@ -1,13 +1,13 @@
 import { sql } from '../db/sql.js'
 import { refreshStorefront } from '../db/storefront.js'
 import { badRequest, conflict, forbidden, notFound } from '../lib/errors.js'
-import { id as newId } from '../lib/crypto.js'
+import { hashPassword, id as newId } from '../lib/crypto.js'
 import { cached, invalidate, tags } from '../lib/cache.js'
 import { pageOf, privateCache, publicCache, readPaging, sendRawCached } from '../lib/reply.js'
 import * as clean from '../lib/sanitize.js'
 import { getThemeById, THEMES, THEME_IDS } from '../data/themes.js'
 import { adminStore, storePatch } from '../domain/store.js'
-import { hasPermission } from '../domain/roles.js'
+import { hasPermission, ROLES } from '../domain/roles.js'
 
 /*
  * GET /stores/resolve is the request every page view starts with:
@@ -125,37 +125,59 @@ export default async function storeRoutes(app) {
     const themeId = THEME_IDS.includes(body.themeId) ? body.themeId : 'heritage-luxury'
     const theme = getThemeById(themeId)
     const tagline = clean.text(body.tagline, 120) || 'An independent fashion house'
-    const email = clean.isEmail(body.email) ? clean.text(body.email, 120) : `hello@${slug}.example`
+    const ownerEmail = clean.isEmail(body.email) ? clean.text(body.email, 160).toLowerCase() : ''
+    if (!ownerEmail) throw badRequest('An owner email is required so the business can sign in to admin.')
+    const ownerPassword = String(body.ownerPassword ?? '')
+    const passwordProblems = clean.passwordIssues(ownerPassword)
+    if (passwordProblems.length) throw badRequest(`Owner password needs ${passwordProblems.join(', ')}.`)
+    const ownerName = clean.text(body.ownerName, 80) || `${name} Owner`
 
-    const [store] = await sql`
-      insert into stores (
-        id, slug, domain, name, tagline, email, phone, city, address, announcement,
-        status, subscription, theme_id, theme, theme_draft,
-        homepage, homepage_draft, navigation, navigation_draft,
-        branding, settings, social, versions, logo_text, cover_image
-      ) values (
-        ${newId('store')}, ${slug}, ${clean.text(body.domain, 120) || `${slug}.example`},
-        ${name}, ${tagline}, ${email}, ${clean.text(body.phone, 20)},
-        ${clean.text(body.city, 60) || 'India'}, '', 'Welcome to our new storefront',
-        'active', ${clean.oneOf(body.subscription, ['starter', 'growth', 'enterprise'], 'starter')},
-        ${themeId}, ${sql.json(theme)}, ${sql.json(theme)},
-        ${sql.json({ version: 1, status: 'published', sections: [] })},
-        ${sql.json({ version: 1, status: 'draft', sections: [] })},
-        ${sql.json({ items: [] })}, ${sql.json({ items: [] })},
-        ${sql.json({ name, tagline, logo: null, favicon: null })},
-        ${sql.json({ currency: 'INR', locale: 'en', supportEmail: email, supportPhone: '' })},
-        ${sql.json({ instagram: `@${slug.replace(/-/g, '')}`, facebook: slug })},
-        ${sql.json([])}, ${name}, ${clean.imageUrl(body.coverImage) || null}
-      )
-      on conflict (slug) do nothing
-      returning *
-    `
-    if (!store) throw conflict('That storefront slug is already taken.')
+    const store = await sql.begin(async (tx) => {
+      const [created] = await tx`
+        insert into stores (
+          id, slug, domain, name, tagline, email, phone, city, address, announcement,
+          status, subscription, theme_id, theme, theme_draft,
+          homepage, homepage_draft, navigation, navigation_draft,
+          branding, settings, social, versions, logo_text, cover_image
+        ) values (
+          ${newId('store')}, ${slug}, ${clean.text(body.domain, 120) || `${slug}.example`},
+          ${name}, ${tagline}, ${ownerEmail}, ${clean.text(body.phone, 20)},
+          ${clean.text(body.city, 60) || 'India'}, '', 'Welcome to our new storefront',
+          'active', ${clean.oneOf(body.subscription, ['starter', 'growth', 'enterprise'], 'starter')},
+          ${themeId}, ${sql.json(theme)}, ${sql.json(theme)},
+          ${sql.json({ version: 1, status: 'published', sections: [] })},
+          ${sql.json({ version: 1, status: 'draft', sections: [] })},
+          ${sql.json({ items: [] })}, ${sql.json({ items: [] })},
+          ${sql.json({ name, tagline, logo: null, favicon: null })},
+          ${sql.json({ currency: 'INR', locale: 'en', supportEmail: ownerEmail, supportPhone: '' })},
+          ${sql.json({ instagram: `@${slug.replace(/-/g, '')}`, facebook: slug })},
+          ${sql.json([])}, ${name}, ${clean.imageUrl(body.coverImage) || null}
+        )
+        on conflict (slug) do nothing
+        returning *
+      `
+      if (!created) throw conflict('That storefront slug is already taken.')
+
+      const [owner] = await tx`
+        insert into users (id, name, email, phone, password_hash, role, tenant_id)
+        values (
+          ${newId('usr')}, ${ownerName}, ${ownerEmail}, ${clean.text(body.phone, 20)},
+          ${await hashPassword(ownerPassword)}, ${ROLES.STORE_OWNER}, ${created.id}
+        )
+        on conflict (email) do nothing
+        returning id
+      `
+      if (!owner) throw conflict('An account with this email already exists.')
+      return created
+    })
 
     await refreshStorefront(store.id)
     await invalidate(tags.storeList())
     reply.code(201)
-    return adminStore(store)
+    return {
+      ...adminStore(store),
+      owner: { name: ownerName, email: ownerEmail, role: ROLES.STORE_OWNER },
+    }
   })
 
   /* ------------------------------------------------------- update a store */

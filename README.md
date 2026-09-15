@@ -46,3 +46,7 @@ Copy `.env.example` to `.env` in both the repo root and `server/` before running
 - `/store/linen-lane`
 
 Admin: `/admin` · Super admin: `/super-admin`
+
+## Docs
+
+- [Adding a new company](docs/adding-a-company.md) — onboard a storefront, create the owner login, and launch the shop.

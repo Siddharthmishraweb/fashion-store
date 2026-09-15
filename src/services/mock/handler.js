@@ -536,6 +536,16 @@ const routes = [
 
     const themeId = THEMES.some((t) => t.id === body?.themeId) ? body.themeId : 'heritage-luxury'
     const theme = THEMES.find((t) => t.id === themeId)
+    const ownerEmail = isEmail(body?.email) ? sanitizeText(body.email, 160).toLowerCase() : ''
+    if (!ownerEmail) return badRequest('An owner email is required so the business can sign in to admin.')
+    const ownerPassword = String(body?.ownerPassword ?? '')
+    const passwordProblems = passwordIssues(ownerPassword)
+    if (passwordProblems.length) return badRequest(`Owner password needs ${passwordProblems.join(', ')}.`)
+    const ownerName = sanitizeText(body?.ownerName, 80) || `${name} Owner`
+    if (getDb().users.some((u) => u.email.toLowerCase() === ownerEmail)) {
+      return json({ message: 'An account with this email already exists.' }, 409)
+    }
+
     let store
     mutate((db) => {
       store = {
@@ -544,7 +554,7 @@ const routes = [
         name,
         tagline: sanitizeText(body?.tagline, 120) || 'An independent fashion house',
         domain: sanitizeText(body?.domain, 120) || `${slug}.example`,
-        email: isEmail(body?.email) ? sanitizeText(body.email, 120) : `hello@${slug}.example`,
+        email: ownerEmail,
         phone: sanitizeText(body?.phone, 20),
         city: sanitizeText(body?.city, 60) || 'India',
         address: '',
@@ -558,7 +568,7 @@ const routes = [
         logo: null,
         favicon: null,
         social: { instagram: `@${slug.replace(/-/g, '')}`, facebook: slug },
-        settings: { currency: 'INR', locale: 'en', supportEmail: `hello@${slug}.example`, supportPhone: '' },
+        settings: { currency: 'INR', locale: 'en', supportEmail: ownerEmail, supportPhone: '' },
         branding: { name, tagline: sanitizeText(body?.tagline, 120) || '', logo: null, favicon: null },
         navigation: { items: [] },
         navigationDraft: { items: [] },
@@ -573,8 +583,23 @@ const routes = [
         coverImage: safeImageUrl(body?.coverImage) || null,
       }
       db.stores.push(store)
+      const passwordSalt = makeSalt()
+      db.users.push({
+        id: uid('usr'),
+        name: ownerName,
+        email: ownerEmail,
+        phone: store.phone,
+        role: ROLES.STORE_OWNER,
+        tenantId: store.id,
+        passwordSalt,
+        passwordHash: demoHash(ownerPassword, passwordSalt),
+        createdAt: store.createdAt,
+      })
     })
-    return json(store, 201)
+    return json({
+      ...store,
+      owner: { name: ownerName, email: ownerEmail, role: ROLES.STORE_OWNER },
+    }, 201)
   }],
 
   ['PATCH', '/stores/:id', ({ params, body, headers }) => {
