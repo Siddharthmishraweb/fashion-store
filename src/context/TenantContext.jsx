@@ -41,7 +41,7 @@ export function TenantProvider({ slug, previewConfig, children }) {
       setState({ ...empty, ...data, loading: false, error: null })
       applyTheme(data.theme)
     } catch (error) {
-      setState((s) => ({ ...s, loading: false, error: error.message || 'Unable to load store' }))
+      setState((s) => ({ ...s, loading: false, error: error.payload?.message || error.message || 'Unable to load store' }))
     }
   }, [slug, previewConfig])
 

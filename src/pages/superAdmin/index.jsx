@@ -21,8 +21,8 @@ import { THEMES } from '../../theme/themes.js'
 
 export default function SuperDashboard() {
   const { data, loading, error, refetch } = useAsync(() => analyticsApi.platform(), [])
-  if (loading) return <Skeleton height={200} count={2} radius={4} />
   if (error) return <ErrorState message={error} onRetry={refetch} />
+  if (loading) return <Skeleton height={200} count={2} radius={4} />
   if (!data) return null
   return (
     <div>

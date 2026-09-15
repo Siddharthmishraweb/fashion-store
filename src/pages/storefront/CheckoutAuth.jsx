@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useCart } from '../../context/CommerceContext.jsx'
 import { useTenant } from '../../context/TenantContext.jsx'
-import { Button, EmptyState, Input, OptimizedImage, Select, Seo, Skeleton } from '../../components/common/index.jsx'
+import { Button, EmptyState, ErrorState, Input, OptimizedImage, Select, Seo, Skeleton } from '../../components/common/index.jsx'
 import { ordersApi } from '../../services/api/index.js'
 import { authApi } from '../../services/api/auth.js'
 import { useSubmit } from '../../hooks/index.js'
@@ -259,7 +259,7 @@ export default function CheckoutPage() {
 
 export function AuthPage() {
   const { login, register, verifyOtp } = useAuth()
-  const { tenant, loading } = useTenant()
+  const { tenant, loading, error, reload } = useTenant()
   const { t } = useI18n()
   const navigate = useNavigate()
   const location = useLocation()
@@ -299,6 +299,14 @@ export function AuthPage() {
     }
     go(await verifyOtp({ phone: form.phone, otp: form.otp, tenantId: tenant.id }))
   })
+
+  if (error) {
+    return (
+      <div className="container" style={{ maxWidth: 460, padding: '3rem 0' }}>
+        <ErrorState message={error} onRetry={reload} />
+      </div>
+    )
+  }
 
   if (loading || !tenant) {
     return (

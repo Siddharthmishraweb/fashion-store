@@ -8,7 +8,7 @@ import { TenantProvider } from '../../context/TenantContext.jsx'
 import { CartProvider, WishlistProvider } from '../../context/CommerceContext.jsx'
 import StoreHome from '../storefront/Home.jsx'
 import { Footer, Header } from '../../components/navigation/Header.jsx'
-import { Button, Input, Select, Skeleton, Toggle } from '../../components/common/index.jsx'
+import { Button, EmptyState, ErrorState, Input, Select, Skeleton, Toggle } from '../../components/common/index.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { HOMEPAGE_BLOCKS } from '../../config/constants.js'
 import { FONT_CATALOG, THEMES } from '../../theme/themes.js'
@@ -99,6 +99,9 @@ export default function CustomizerPage() {
     storeQuery.refetch()
   })
 
+  if (storeQuery.error) {
+    return <ErrorState message={storeQuery.error} onRetry={storeQuery.refetch} />
+  }
   if (storeQuery.loading || !store || !current) {
     return <Skeleton height={480} radius={4} />
   }

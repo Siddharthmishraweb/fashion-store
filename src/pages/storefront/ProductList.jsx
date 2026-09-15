@@ -254,10 +254,10 @@ export default function ProductListPage({ mode = 'category' }) {
         {isDesktop ? <aside aria-label="Filters">{filterPanel}</aside> : null}
 
         <div>
-          {loading ? (
-            <div className="product-grid"><Skeleton count={8} height={340} radius={2} /></div>
-          ) : error ? (
+          {error ? (
             <ErrorState message={error} onRetry={refetch} />
+          ) : loading ? (
+            <div className="product-grid"><Skeleton count={8} height={340} radius={2} /></div>
           ) : Array.isArray(data?.items) && data.items.length ? (
             <>
               <ProductGrid

@@ -136,6 +136,13 @@ export default function ProductDetail() {
   const base = `/store/${tenant.slug}`
   const images = useMemo(() => (product?.images || []).filter((img) => img?.src), [product])
 
+  if (error) {
+    return (
+      <div className="container" style={{ padding: '2rem 0' }}>
+        <ErrorState message={error} onRetry={refetch} />
+      </div>
+    )
+  }
   if (loading) {
     return (
       <div className="container" style={{ padding: '1.5rem 0' }}>
@@ -143,13 +150,6 @@ export default function ProductDetail() {
           <Skeleton height={560} radius={2} />
           <div style={{ display: 'grid', gap: 12 }}><Skeleton height={40} count={6} radius={2} /></div>
         </div>
-      </div>
-    )
-  }
-  if (error) {
-    return (
-      <div className="container" style={{ padding: '2rem 0' }}>
-        <ErrorState message={error} onRetry={refetch} />
       </div>
     )
   }

@@ -14,7 +14,7 @@ export function useAsync(fn, deps = [], { enabled = true } = {}) {
       return undefined
     }
     let active = true
-    setState((s) => ({ ...s, loading: true, error: null }))
+    setState((s) => ({ ...s, loading: s.data == null, error: null }))
     Promise.resolve()
       .then(() => fnRef.current())
       .then((data) => {
@@ -22,11 +22,11 @@ export function useAsync(fn, deps = [], { enabled = true } = {}) {
       })
       .catch((error) => {
         if (active) {
-          setState({
-            data: null,
+          setState((s) => ({
+            data: s.data,
             loading: false,
             error: error.payload?.message || error.message || 'Something went wrong',
-          })
+          }))
         }
       })
     return () => {
@@ -101,24 +101,21 @@ export function useLockBody(locked) {
 export function useSubmit(handler) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
-  const mounted = useRef(true)
-  useEffect(() => () => {
-    mounted.current = false
-  }, [])
+  const handlerRef = useRef(handler)
+  handlerRef.current = handler
 
   const submit = useCallback(async (...args) => {
     setError('')
     setPending(true)
     try {
-      return await handler(...args)
+      return await handlerRef.current(...args)
     } catch (err) {
-      const message = err.payload?.message || err.message || 'Something went wrong'
-      if (mounted.current) setError(message)
+      setError(err.payload?.message || err.message || 'Something went wrong')
       return undefined
     } finally {
-      if (mounted.current) setPending(false)
+      setPending(false)
     }
-  }, [handler])
+  }, [])
 
   return { submit, pending, error, setError }
 }

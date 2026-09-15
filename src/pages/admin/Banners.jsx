@@ -89,7 +89,9 @@ function DevicePreview({ form, device }) {
 
 function ImagePicker({ label, field, form, setField, error, hint }) {
   const [open, setOpen] = useState(false)
+  const [broken, setBroken] = useState(false)
   const preview = safeImageUrl(form[field])
+  const showPreview = preview && !broken
   return (
     <div className="image-picker">
       <Input
@@ -98,14 +100,21 @@ function ImagePicker({ label, field, form, setField, error, hint }) {
         error={error}
         hint={hint}
         placeholder="https://…"
-        onChange={(e) => setField(field, e.target.value)}
+        onChange={(e) => {
+          setBroken(false)
+          setField(field, e.target.value)
+        }}
       />
       <div className="image-picker-row">
-        {preview ? <img src={preview} alt="" className="image-picker-thumb" /> : <span className="image-picker-thumb empty" aria-hidden="true" />}
+        {showPreview ? (
+          <img src={preview} alt="" className="image-picker-thumb" onError={() => setBroken(true)} />
+        ) : (
+          <span className="image-picker-thumb empty" aria-hidden="true" />
+        )}
         <Button variant="ghost" size="sm" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
           {open ? 'Close library' : 'Choose from library'}
         </Button>
-        {form[field] ? <Button variant="ghost" size="sm" onClick={() => setField(field, '')}>Clear</Button> : null}
+        {form[field] ? <Button variant="ghost" size="sm" onClick={() => { setBroken(false); setField(field, '') }}>Clear</Button> : null}
       </div>
       {open ? (
         <div className="stock-grid">
@@ -155,7 +164,8 @@ function BannerEditor({ banner, storeSlug, onClose, onSaved }) {
       onClose={onClose}
       footer={
         <>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          {error ? <p className="form-error" role="alert" style={{ marginRight: 'auto' }}>{error}</p> : null}
+          <Button variant="ghost" onClick={onClose} disabled={pending}>Cancel</Button>
           <Button variant="secondary" loading={pending} onClick={() => submit('draft')}>Save draft</Button>
           <Button loading={pending} onClick={() => submit('published')}>
             {form.status === 'published' ? 'Save & keep live' : 'Publish'}
@@ -255,8 +265,6 @@ export function BannersAdmin() {
     refetch()
   }
 
-  if (error) return <ErrorState message={error} onRetry={refetch} />
-
   return (
     <div>
       <div className="admin-top">
@@ -267,7 +275,9 @@ export function BannersAdmin() {
         <Button onClick={() => setEditing({})}>New banner</Button>
       </div>
 
-      {loading ? (
+      {error ? (
+        <div className="banner-list"><ErrorState message={error} onRetry={refetch} /></div>
+      ) : loading ? (
         <div className="banner-list"><Skeleton height={150} count={3} radius={4} /></div>
       ) : banners.length === 0 ? (
         <EmptyState

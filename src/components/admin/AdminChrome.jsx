@@ -6,7 +6,7 @@ import { env } from '../../config/env.js'
 import { notificationsApi } from '../../services/api/index.js'
 import { storesApi } from '../../services/api/stores.js'
 import { useAsync, useMedia } from '../../hooks/index.js'
-import { Badge, Button, EmptyState, Skeleton } from '../common/index.jsx'
+import { Badge, Button, EmptyState, ErrorState, Skeleton } from '../common/index.jsx'
 import { cx, timeAgo } from '../../utils/index.js'
 
 const STORE_LINKS = [
@@ -218,6 +218,8 @@ export function DataTable({
   columns,
   rows = [],
   loading,
+  error,
+  onRetry,
   search,
   onSearch,
   searchPlaceholder = 'Search',
@@ -250,7 +252,9 @@ export function DataTable({
         </div>
       ) : null}
 
-      {loading ? (
+      {error ? (
+        <ErrorState message={error} onRetry={onRetry} />
+      ) : loading ? (
         <div style={{ padding: 16, display: 'grid', gap: 8 }}>
           <Skeleton height={34} count={5} />
         </div>

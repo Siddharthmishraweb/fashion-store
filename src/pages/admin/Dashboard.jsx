@@ -11,8 +11,8 @@ export default function AdminDashboard() {
   const { data, loading, error, refetch } = useAsync(() => analyticsApi.store(user.tenantId), [user.tenantId])
   const orders = useAsync(() => ordersApi.list({ tenantId: user.tenantId, limit: 6 }), [user.tenantId])
 
-  if (loading) return <Skeleton height={140} count={3} radius={4} />
   if (error) return <ErrorState message={error} onRetry={refetch} />
+  if (loading) return <Skeleton height={140} count={3} radius={4} />
   if (!data) return null
 
   const firstName = user?.name?.trim().split(/\s+/)[0] || 'there'

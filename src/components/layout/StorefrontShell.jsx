@@ -11,23 +11,23 @@ import { cx } from '../../utils/index.js'
 export function StorefrontShell() {
   const { loading, error, tenant, reload } = useTenant()
 
-  if (loading) {
-    return (
-      <div className="container" style={{ padding: '2rem 0', display: 'grid', gap: 16 }}>
-        <Skeleton height={44} radius={4} />
-        <Skeleton height={420} radius={4} />
-        <Skeleton height={260} radius={4} />
-      </div>
-    )
-  }
-
-  if (error || !tenant) {
+  if (error || (!loading && !tenant)) {
     return (
       <div className="container" style={{ padding: '3rem 0' }}>
         <ErrorState message={error || 'This storefront is unavailable.'} onRetry={reload} />
         <p style={{ textAlign: 'center' }}>
           <Link className="btn btn-ghost" to="/">Browse other stores on {env.appName}</Link>
         </p>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="container" style={{ padding: '2rem 0', display: 'grid', gap: 16 }}>
+        <Skeleton height={44} radius={4} />
+        <Skeleton height={420} radius={4} />
+        <Skeleton height={260} radius={4} />
       </div>
     )
   }

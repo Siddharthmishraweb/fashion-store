@@ -137,8 +137,8 @@ export function AccountHome() {
 export function OrdersPage() {
   const { data, loading, error, refetch } = useAsync(() => ordersApi.list({ limit: 20 }), [])
 
-  if (loading) return <Skeleton height={90} count={3} radius={4} />
   if (error) return <ErrorState message={error} onRetry={refetch} />
+  if (loading) return <Skeleton height={90} count={3} radius={4} />
   if (!data?.items?.length) {
     return <EmptyState title="No orders yet" hint="Once you place an order it will appear here with live tracking." />
   }
@@ -168,8 +168,8 @@ export function OrderDetailPage() {
   const { orderId } = useParams()
   const { data: order, loading, error, refetch } = useAsync(() => ordersApi.get(orderId), [orderId])
 
-  if (loading) return <Skeleton height={320} radius={4} />
   if (error) return <ErrorState message={error} onRetry={refetch} />
+  if (loading) return <Skeleton height={320} radius={4} />
   if (!order) return null
 
   const reached = new Set((order.timeline || []).map((t) => t.status))
@@ -237,11 +237,12 @@ export function SimpleAccount({ title, body }) {
 
 export function NotificationsPage() {
   const { tenant } = useTenant()
-  const { data, loading } = useAsync(
+  const { data, loading, error, refetch } = useAsync(
     () => notificationsApi.list({ tenantId: tenant.id, audience: 'customer' }),
     [tenant.id],
   )
 
+  if (error) return <ErrorState message={error} onRetry={refetch} />
   if (loading) return <Skeleton height={70} count={3} radius={4} />
   if (!data?.length) return <EmptyState title="Nothing new" hint="Offers and order updates will show up here." />
 

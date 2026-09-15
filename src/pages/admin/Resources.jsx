@@ -396,8 +396,8 @@ export function ProductEditor() {
       />
     )
   }
-  if (loading) return <p className="muted">Loading product…</p>
   if (loadError) return <ErrorState message={loadError} />
+  if (loading) return <p className="muted">Loading product…</p>
 
   return (
     <div>
@@ -498,7 +498,7 @@ export function ProductEditor() {
 export function CategoriesAdmin() {
   const { user } = useAuth()
   const { push } = useToast()
-  const { data, loading, refetch } = useAsync(() => categoriesApi.list(user.tenantId), [user.tenantId])
+  const { data, loading, error: loadError, refetch } = useAsync(() => categoriesApi.list(user.tenantId), [user.tenantId])
   const [name, setName] = useState('')
   const [confirming, setConfirming] = useState(null)
   const rows = useMemo(
@@ -532,6 +532,8 @@ export function CategoriesAdmin() {
 
       <DataTable
         loading={loading}
+        error={loadError}
+        onRetry={refetch}
         rows={rows}
         emptyTitle="No categories yet"
         columns={[
@@ -581,7 +583,7 @@ export function CategoriesAdmin() {
 export function CollectionsAdmin() {
   const { user } = useAuth()
   const { push } = useToast()
-  const { data, loading, refetch } = useAsync(() => collectionsApi.list(user.tenantId), [user.tenantId])
+  const { data, loading, error: loadError, refetch } = useAsync(() => collectionsApi.list(user.tenantId), [user.tenantId])
   const [name, setName] = useState('')
 
   const { submit, pending, error } = useSubmit(async () => {
@@ -601,6 +603,8 @@ export function CollectionsAdmin() {
       </form>
       <DataTable
         loading={loading}
+        error={loadError}
+        onRetry={refetch}
         rows={data || []}
         emptyTitle="No collections yet"
         columns={[
@@ -672,8 +676,8 @@ export function OrderAdminDetail() {
   const { data, loading, error, refetch } = useAsync(() => ordersApi.get(id), [id])
   const [tracking, setTracking] = useState({ carrier: '', code: '' })
 
-  if (loading) return <p className="muted">Loading order…</p>
   if (error) return <ErrorState message={error} onRetry={refetch} />
+  if (loading) return <p className="muted">Loading order…</p>
   if (!data) return null
 
   return (
@@ -795,7 +799,8 @@ export function CustomersAdmin() {
 
 export function CustomerAdminDetail() {
   const { id } = useParams()
-  const { data, loading } = useAsync(() => customersApi.get(id), [id])
+  const { data, loading, error, refetch } = useAsync(() => customersApi.get(id), [id])
+  if (error) return <ErrorState message={error} onRetry={refetch} />
   if (loading) return <p className="muted">Loading customer…</p>
   if (!data) return null
   return (
@@ -896,7 +901,7 @@ export function InventoryAdmin() {
 export function CouponsAdmin() {
   const { user } = useAuth()
   const { push } = useToast()
-  const { data, loading, refetch } = useAsync(() => couponsApi.list(user.tenantId), [user.tenantId])
+  const { data, loading, error: loadError, refetch } = useAsync(() => couponsApi.list(user.tenantId), [user.tenantId])
   const [form, setForm] = useState({ code: '', type: 'percent', value: 10, minOrder: 4999, maxDiscount: 2000, expiresAt: '' })
   const [confirming, setConfirming] = useState(null)
 
@@ -925,6 +930,8 @@ export function CouponsAdmin() {
 
       <DataTable
         loading={loading}
+        error={loadError}
+        onRetry={refetch}
         rows={data || []}
         emptyTitle="No coupons yet"
         columns={[
@@ -1049,7 +1056,7 @@ export function TeamAdmin() {
 export function StoreSettingsAdmin() {
   const { user } = useAuth()
   const { push } = useToast()
-  const { data: store, loading, refetch } = useAsync(() => storesApi.get(user.tenantId), [user.tenantId])
+  const { data: store, loading, error: loadError, refetch } = useAsync(() => storesApi.get(user.tenantId), [user.tenantId])
   const [draft, setDraft] = useState(null)
 
   const form = draft || {
@@ -1086,6 +1093,7 @@ export function StoreSettingsAdmin() {
     refetch()
   })
 
+  if (loadError) return <ErrorState message={loadError} onRetry={refetch} />
   if (loading) return <p className="muted">Loading settings…</p>
   if (!store) return <EmptyState title="Store not found" hint="Sign in again to reload your storefront." />
 
