@@ -23,6 +23,8 @@ export const env = {
   basePath,
   /** Always ends with a slash; use for `window.location` jumps. */
   homePath: `${basePath}/`,
+  cloudinaryCloudName: import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '',
+  cloudinaryUploadPreset: import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || '',
 }
 
 /** Absolute URL for the running app, including the GitHub Pages project path. */

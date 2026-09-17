@@ -10,7 +10,7 @@ import { IconBag, IconHeart, IconHome, IconMenu, IconSearch, IconUser } from '..
 import { SearchOverlay } from './SearchOverlay.jsx'
 import { engageApi } from '../../services/api/index.js'
 import { useMedia } from '../../hooks/index.js'
-import { formatCurrency } from '../../utils/index.js'
+import { formatCurrency, instagramHandle, instagramUrl } from '../../utils/index.js'
 import { isEmail, safeImageUrl, safeUrl } from '../../utils/security.js'
 
 export function AnnouncementBar({ text, to }) {
@@ -86,7 +86,7 @@ export function Header({ onOpenCart }) {
         </div>
 
         <Link to={base} className="logo">
-          {logo ? <img src={logo} alt={tenant.name} height="36" /> : tenant.logoText}
+          {logo ? <img src={logo} alt={tenant.name} height="36" width="120" decoding="async" /> : tenant.logoText}
           <small>{tenant.tagline}</small>
         </Link>
 
@@ -237,6 +237,13 @@ export function Footer() {
             <a href={`mailto:${tenant.settings?.supportEmail || tenant.email}`}>{tenant.settings?.supportEmail || tenant.email}</a>
             {tenant.phone ? ` · ${tenant.phone}` : ''}
           </p>
+          {instagramUrl(tenant.social?.instagram) ? (
+            <p className="footer-social">
+              <a href={instagramUrl(tenant.social.instagram)} target="_blank" rel="noreferrer">
+                Instagram {instagramHandle(tenant.social.instagram)}
+              </a>
+            </p>
+          ) : null}
         </div>
         <div>
           <h3>Shop</h3>
@@ -265,6 +272,14 @@ export function Footer() {
       <div className="container footer-legal">
         <p className="muted">
           © {new Date().getFullYear()} {tenant.name}. All weaves photographed at our studio. Prices include GST.
+          {instagramUrl(tenant.social?.instagram) ? (
+            <>
+              {' · '}
+              <a href={instagramUrl(tenant.social.instagram)} target="_blank" rel="noreferrer">
+                {instagramHandle(tenant.social.instagram)}
+              </a>
+            </>
+          ) : null}
         </p>
         <p className="muted">{t('footer.newsletterHint')}</p>
       </div>

@@ -41,7 +41,7 @@ export default function AdminDashboard() {
 
       <div className="stats">
         <Stat label="Sales" value={formatCurrency(data.sales)} />
-        <Stat label="Your revenue" value={formatCurrency(data.revenue)} />
+        <Stat label="Net profit" value={formatCurrency(data.netProfit ?? data.revenue)} hint="Sold − cost − dispatch" />
         <Stat label="Orders" value={data.orders ?? 0} />
         <Stat label="Products" value={data.products ?? 0} hint={`${data.publishedProducts ?? 0} live`} />
         <Stat label="Customers" value={data.customers ?? 0} />

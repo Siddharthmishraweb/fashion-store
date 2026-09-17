@@ -12,6 +12,7 @@ import { Button, EmptyState, ErrorState, Input, Select, Skeleton, Toggle } from 
 import { useToast } from '../../context/ToastContext.jsx'
 import { HOMEPAGE_BLOCKS } from '../../config/constants.js'
 import { FONT_CATALOG, THEMES } from '../../theme/themes.js'
+import { ThemePreview } from '../../components/commerce/ThemePreview.jsx'
 import { cx, uid, withinDateRange } from '../../utils/index.js'
 
 const TABS = [
@@ -138,11 +139,7 @@ export default function CustomizerPage() {
                   className={cx('theme-option', current.themeDraft.id === theme.id && 'on')}
                   onClick={() => setTheme(theme)}
                 >
-                  <span className="palette">
-                    {[theme.primaryColor, theme.accentColor, theme.backgroundColor, theme.textColor].map((c, i) => (
-                      <span key={i} style={{ background: c }} />
-                    ))}
-                  </span>
+                  <ThemePreview theme={theme} storeName={store.name} />
                   <span>
                     <b>{theme.name}</b>
                     <small className="muted">{theme.description}</small>

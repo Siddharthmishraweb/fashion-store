@@ -182,6 +182,35 @@ function validateBanner(banner, body) {
   return null
 }
 
+function publicProduct(product) {
+  if (!product) return product
+  const { costPrice, dispatchCharge, unitProfit, ...rest } = product
+  return rest
+}
+
+function staffProduct(product) {
+  if (!product) return product
+  const costPrice = Number(product.costPrice) || 0
+  const dispatchCharge = Number(product.dispatchCharge) || 0
+  return {
+    ...product,
+    costPrice,
+    dispatchCharge,
+    unitProfit: Math.round((Number(product.price) - costPrice - dispatchCharge) * 100) / 100,
+  }
+}
+
+function presentProducts(items, headers, tenantId) {
+  const staff = ownsTenant(currentUser(headers), tenantId)
+  return items.map((item) => (staff ? staffProduct(item) : publicProduct(item)))
+}
+
+function publicOrder(order) {
+  if (!order) return order
+  const { costTotal, dispatchTotal, netProfit, ...rest } = order
+  return rest
+}
+
 function productFromBody(body, existing = {}) {
   const name = pick.text(body.name ?? existing.name ?? '', 120)
   const images = Array.isArray(body.images)
@@ -196,6 +225,8 @@ function productFromBody(body, existing = {}) {
     sku: pick.text(body.sku ?? existing.sku ?? '', 40),
     price: pick.number(body.price ?? existing.price ?? 0, { max: 5000000 }),
     mrp: pick.number(body.mrp ?? existing.mrp ?? 0, { max: 5000000 }),
+    costPrice: pick.number(body.costPrice ?? existing.costPrice ?? 0, { max: 5000000 }),
+    dispatchCharge: pick.number(body.dispatchCharge ?? existing.dispatchCharge ?? 0, { max: 5000000 }),
     inventory: pick.number(body.inventory ?? existing.inventory ?? 0, { max: 100000 }),
     fabric: pick.text(body.fabric ?? existing.fabric ?? '', 60),
     color: pick.text(body.color ?? existing.color ?? '', 40),
@@ -501,7 +532,7 @@ const routes = [
       coverImage: s.coverImage,
       createdAt: s.createdAt,
     }))
-    if (q) items = items.filter((s) => s.name.toLowerCase().includes(q) || s.slug.includes(q))
+    if (q) items = items.filter((s) => s.name.toLowerCase().includes(q) || s.slug.includes(q) || String(s.city || '').toLowerCase().includes(q))
     const status = searchParams.get('status')
     if (status) items = items.filter((s) => s.status === status)
     return json(paginate(items, searchParams))
@@ -567,7 +598,7 @@ const routes = [
         logoText: name,
         logo: null,
         favicon: null,
-        social: { instagram: `@${slug.replace(/-/g, '')}`, facebook: slug },
+        social: { instagram: sanitizeText(body?.instagram, 80) || `@${slug.replace(/-/g, '')}`, facebook: slug },
         settings: { currency: 'INR', locale: 'en', supportEmail: ownerEmail, supportPhone: '' },
         branding: { name, tagline: sanitizeText(body?.tagline, 120) || '', logo: null, favicon: null },
         navigation: { items: [] },
@@ -634,6 +665,13 @@ const routes = [
         currency: 'INR',
       }
     }
+    if (body.social !== undefined) {
+      patch.social = {
+        ...store.social,
+        instagram: sanitizeText(body.social.instagram, 80),
+        facebook: sanitizeText(body.social.facebook ?? store.social?.facebook, 80),
+      }
+    }
     if (body.branding !== undefined) {
       patch.branding = {
         ...store.branding,
@@ -673,7 +711,7 @@ const routes = [
       const wanted = ids.split(',').filter(Boolean)
       items = wanted.map((id) => items.find((p) => p.id === id)).filter(Boolean)
     }
-    return json(paginate(items, searchParams))
+    return json(paginate(presentProducts(items, headers, tenantId), searchParams))
   }],
 
   ['GET', '/products/facets', ({ searchParams }) => {
@@ -701,11 +739,15 @@ const routes = [
       (p) => p.id === params.id || (p.slug === params.id && (!tenantId || p.tenantId === tenantId)),
     )
     if (!product) return notFound('That product is no longer available.')
+    const user = currentUser(headers)
+    const staff = ownsTenant(user, product.tenantId)
+    if (!product.published && !staff) return notFound('That product is no longer available.')
     const siblings = db.products.filter((p) => p.tenantId === product.tenantId && p.id !== product.id && p.published)
+    const view = staff ? staffProduct(product) : publicProduct(product)
     return json({
-      product,
-      related: siblings.filter((p) => p.occasion === product.occasion).slice(0, 8),
-      similar: siblings.filter((p) => p.fabric === product.fabric).slice(0, 8),
+      product: view,
+      related: siblings.filter((p) => p.occasion === product.occasion).slice(0, 8).map(publicProduct),
+      similar: siblings.filter((p) => p.fabric === product.fabric).slice(0, 8).map(publicProduct),
       reviews: db.reviews.filter((r) => r.productId === product.id),
       questions: db.questions.filter((q) => q.productId === product.id),
     })
@@ -761,7 +803,7 @@ const routes = [
       const store = db.stores.find((s) => s.id === tenantId)
       if (store) store.productsCount = db.products.filter((p) => p.tenantId === tenantId).length
     })
-    return json(product, 201)
+    return json(staffProduct(product), 201)
   }],
 
   ['PATCH', '/products/:id', ({ params, body, headers }) => {
@@ -778,7 +820,7 @@ const routes = [
       product = db.products.find((p) => p.id === params.id)
       Object.assign(product, fields, { updatedAt: new Date().toISOString() })
     })
-    return json(product)
+    return json(staffProduct(product))
   }],
 
   ['DELETE', '/products/:id', ({ params, headers }) => {
@@ -859,7 +901,7 @@ const routes = [
       .filter((c) => c.tenantId === tenantId && c.name.toLowerCase().includes(q))
       .slice(0, 5)
     const brands = [...new Set(tenantProducts.map((p) => p.brand))].filter((b) => b.toLowerCase().includes(q)).slice(0, 5)
-    return json({ products, categories, brands, popular: db.popularSearches })
+    return json({ products: products.map(publicProduct), categories, brands, popular: db.popularSearches })
   }],
 
   ['GET', '/recommendations', ({ searchParams }) => {
@@ -869,7 +911,7 @@ const routes = [
     let items = db.products.filter((p) => p.tenantId === tenantId && p.published)
     if (type === 'trending') items = items.filter((p) => p.badges.includes('trending') || p.featured)
     if (type === 'fbt') items = items.slice(3, 7)
-    return json({ items: items.slice(0, 8), source: 'backend' })
+    return json({ items: items.slice(0, 8).map(publicProduct), source: 'backend' })
   }],
 
   /* ---- taxonomy ---- */
@@ -1067,6 +1109,7 @@ const routes = [
     const q = sanitizeText(searchParams.get('q') || '', 60).toLowerCase()
     if (q) items = items.filter((o) => o.number.toLowerCase().includes(q) || o.customerName.toLowerCase().includes(q))
     items = [...items].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    if (user.role === ROLES.CUSTOMER) items = items.map(publicOrder)
     return json(paginate(items, searchParams))
   }],
 
@@ -1082,7 +1125,7 @@ const routes = [
     } else if (!ownsTenant(user, order.tenantId)) {
       return forbidden()
     }
-    return json(order)
+    return json(user.role === ROLES.CUSTOMER ? publicOrder(order) : order)
   }],
 
   ['PATCH', '/orders/:id', ({ params, body, headers }) => {
@@ -1133,10 +1176,20 @@ const routes = [
       if (!product.published) return badRequest(`${product.name} is no longer on sale.`)
       const qty = Math.max(1, Math.min(10, Number(line.qty) || 1))
       if (product.inventory < qty) return badRequest(`Only ${product.inventory} left of ${product.name}.`)
-      lines.push({ productId: product.id, name: product.name, image: product.images[0]?.src || '', price: product.price, qty })
+      lines.push({
+        productId: product.id,
+        name: product.name,
+        image: product.images[0]?.src || '',
+        price: product.price,
+        qty,
+        _cost: Number(product.costPrice) || 0,
+        _dispatch: Number(product.dispatchCharge) || 0,
+      })
     }
 
     const subtotal = lines.reduce((sum, l) => sum + l.price * l.qty, 0)
+    const costTotal = lines.reduce((sum, l) => sum + l._cost * l.qty, 0)
+    const dispatchTotal = lines.reduce((sum, l) => sum + l._dispatch * l.qty, 0)
     let discount = 0
     if (body?.couponCode) {
       const coupon = db.coupons.find(
@@ -1150,6 +1203,8 @@ const routes = [
     }
     const shipping = subtotal - discount >= 2999 ? 0 : 149
     const total = Math.max(0, subtotal - discount + shipping)
+    const netProfit = Math.round((subtotal - discount - costTotal - dispatchTotal) * 100) / 100
+    const publicLines = lines.map(({ _cost, _dispatch, ...rest }) => rest)
 
     let order
     mutate((d) => {
@@ -1163,7 +1218,7 @@ const routes = [
         status: 'placed',
         paymentStatus: body?.paymentMethod === 'cod' ? 'pending' : 'paid',
         paymentMethod: pick.enumeration(body?.paymentMethod, ['upi', 'card', 'netbanking', 'cod'], 'upi'),
-        items: lines,
+        items: publicLines,
         address: {
           name: sanitizeText(address.name, 80),
           phone: sanitizeText(address.phone, 20),
@@ -1174,6 +1229,9 @@ const routes = [
           pin: sanitizeText(address.pin, 10),
         },
         totals: { subtotal, shipping, discount, tax: Math.round((subtotal / 1.05) * 0.05), total },
+        costTotal,
+        dispatchTotal,
+        netProfit,
         timeline: [{ status: 'placed', at: new Date().toISOString() }],
         tracking: null,
         createdAt: new Date().toISOString(),
@@ -1199,7 +1257,8 @@ const routes = [
         createdAt: new Date().toISOString(),
       })
     })
-    return json(order, 201)
+    const { costTotal: _c, dispatchTotal: _d, netProfit: _n, ...publicOrder } = order
+    return json(publicOrder, 201)
   }],
 
   /* ---- customers ---- */
@@ -1435,13 +1494,32 @@ const routes = [
     const auth = requireSuperAdmin(headers)
     if (auth.error) return auth.error
     const db = getDb()
+    const shops = db.stores.map((s) => {
+      const shopOrders = db.orders.filter((o) => o.tenantId === s.id && !['cancelled', 'returned', 'refunded'].includes(o.status))
+      return {
+        id: s.id,
+        slug: s.slug,
+        name: s.name,
+        city: s.city,
+        status: s.status,
+        gmv: s.gmv,
+        ordersCount: s.ordersCount,
+        netProfit: shopOrders.reduce((sum, o) => sum + (Number(o.netProfit) || 0), 0),
+      }
+    })
+    const gmv = db.stores.reduce((sum, s) => sum + s.gmv, 0)
+    const netProfit = shops.reduce((sum, s) => sum + s.netProfit, 0)
     return json({
       ...db.analytics.platform,
       stores: db.stores.length,
       activeStores: db.stores.filter((s) => s.status === 'active').length,
       products: db.products.length,
-      gmv: db.stores.reduce((sum, s) => sum + s.gmv, 0),
+      gmv,
+      revenue: gmv,
+      netProfit,
+      netIncome: netProfit,
       orders: db.stores.reduce((sum, s) => sum + s.ordersCount, 0),
+      shops,
     })
   }],
 
@@ -1453,9 +1531,13 @@ const routes = [
     const store = db.stores.find((s) => s.id === tenantId)
     const storeProducts = db.products.filter((p) => p.tenantId === tenantId)
     const storeOrders = db.orders.filter((o) => o.tenantId === tenantId)
+    const netProfit = storeOrders
+      .filter((o) => !['cancelled', 'returned', 'refunded'].includes(o.status))
+      .reduce((sum, o) => sum + (Number(o.netProfit) || 0), 0)
     return json({
       sales: store?.gmv || 0,
-      revenue: Math.round((store?.gmv || 0) * 0.18),
+      revenue: netProfit,
+      netProfit,
       orders: store?.ordersCount || storeOrders.length,
       products: storeProducts.length,
       publishedProducts: storeProducts.filter((p) => p.published).length,

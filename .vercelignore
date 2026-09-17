@@ -1,0 +1,7 @@
+server
+.env
+.env.*
+!.env.example
+node_modules
+.localdb
+*.log

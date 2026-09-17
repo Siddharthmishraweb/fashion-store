@@ -66,6 +66,8 @@ export function buildProductDto({ body = {}, existing = null, id, tenantId, slug
 
   const price = field('price', (v) => clean.number(v, { max: 5000000 }), 0)
   const mrp = field('mrp', (v) => clean.number(v, { max: 5000000 }), 0)
+  const costPrice = field('costPrice', (v) => clean.number(v, { max: 5000000 }), 0)
+  const dispatchCharge = field('dispatchCharge', (v) => clean.number(v, { max: 5000000 }), 0)
   if (price <= 0) throw badRequest('Set a selling price above zero.')
   if (mrp && mrp < price) throw badRequest('MRP cannot be lower than the selling price.')
 
@@ -90,6 +92,8 @@ export function buildProductDto({ body = {}, existing = null, id, tenantId, slug
     categorySlug: field('categorySlug', (v) => clean.slugify(v) || 'sarees', 'sarees'),
     price,
     mrp: mrp || price,
+    costPrice,
+    dispatchCharge,
     gst: field('gst', (v) => clean.number(v, { max: 28 }), 5),
     images: images(body.images, name, base.images || []),
     videos: Array.isArray(base.videos) ? base.videos : [],
@@ -137,7 +141,32 @@ export function buildProductDto({ body = {}, existing = null, id, tenantId, slug
   ].filter(([, value]) => value)
 
   dto.variants = variants(body.variants, dto, base.variants || [])
+  dto.unitProfit = unitProfit(dto.price, costPrice, dispatchCharge)
   return dto
+}
+
+/** Shoppers never receive cost or profit — those live in typed columns. */
+export function publicProductDto(dto) {
+  if (!dto || typeof dto !== 'object') return dto
+  const next = { ...dto }
+  delete next.costPrice
+  delete next.dispatchCharge
+  delete next.unitProfit
+  return next
+}
+
+export function unitProfit(price, costPrice = 0, dispatchCharge = 0) {
+  return Math.round((Number(price) - Number(costPrice) - Number(dispatchCharge)) * 100) / 100
+}
+
+export function withStaffCosts(dto, costPrice = 0, dispatchCharge = 0) {
+  const publicDto = publicProductDto(dto) || {}
+  return {
+    ...publicDto,
+    costPrice: Number(costPrice) || 0,
+    dispatchCharge: Number(dispatchCharge) || 0,
+    unitProfit: unitProfit(publicDto.price, costPrice, dispatchCharge),
+  }
 }
 
 /** Maps a DTO onto the products table, including the stored read model. */
@@ -156,6 +185,8 @@ export function productRow(dto) {
     price: dto.price,
     mrp: dto.mrp,
     gst: dto.gst,
+    cost_price: Number(dto.costPrice) || 0,
+    dispatch_charge: Number(dto.dispatchCharge) || 0,
     fabric: dto.fabric,
     color: dto.color,
     colors: dto.colors,
@@ -171,7 +202,7 @@ export function productRow(dto) {
     review_count: dto.reviewCount,
     published: dto.published,
     featured: dto.featured,
-    payload: dto,
+    payload: publicProductDto(dto),
     created_at: dto.createdAt,
     updated_at: dto.updatedAt,
   }

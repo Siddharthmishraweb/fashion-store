@@ -1,28 +1,11 @@
-import { constants as zlibConstants } from 'node:zlib'
-
 import Fastify, { LogController } from 'fastify'
-import compress from '@fastify/compress'
 import cors from '@fastify/cors'
 import etag from '@fastify/etag'
 import helmet from '@fastify/helmet'
 import rateLimit from '@fastify/rate-limit'
-import underPressure from '@fastify/under-pressure'
 
 import { config } from './config/env.js'
 import { errorHandler } from './lib/errors.js'
-import authPlugin from './plugins/auth.js'
-
-import analyticsRoutes from './routes/analytics.js'
-import authRoutes from './routes/auth.js'
-import catalogRoutes from './routes/catalog.js'
-import couponRoutes from './routes/coupons.js'
-import customizeRoutes from './routes/customize.js'
-import engageRoutes from './routes/engage.js'
-import healthRoutes from './routes/health.js'
-import orderRoutes from './routes/orders.js'
-import peopleRoutes from './routes/people.js'
-import productRoutes from './routes/products.js'
-import storeRoutes from './routes/stores.js'
 
 export async function buildApp() {
   const app = Fastify({
@@ -38,7 +21,7 @@ export async function buildApp() {
     // Trust the first proxy hop so rate limiting and audit logs see the real
     // client address behind a load balancer.
     trustProxy: true,
-    bodyLimit: 512 * 1024,
+    bodyLimit: 9 * 1024 * 1024,
     // Query strings carry repeated facet params (?fabric=A&fabric=B); the
     // default parser already produces arrays for those, which is what the
     // catalogue filters expect.
@@ -93,35 +76,36 @@ export async function buildApp() {
   // 304s for repeat storefront reads. Weak etags are enough and cheaper.
   await app.register(etag, { weak: true })
 
-  await app.register(compress, {
-    global: true,
-    encodings: ['br', 'gzip', 'deflate'],
-    // Compressing a small payload costs more CPU than it saves bandwidth.
-    threshold: 1024,
-    // Brotli defaults to quality 11, which is tuned for static assets built
-    // once and served forever. For a response generated per request it is the
-    // single most expensive thing the process does: quality 4 compresses JSON
-    // within a few percent of 11 at a small fraction of the CPU.
-    brotliOptions: {
-      params: {
-        [zlibConstants.BROTLI_PARAM_QUALITY]: 4,
-        [zlibConstants.BROTLI_PARAM_MODE]: zlibConstants.BROTLI_MODE_TEXT,
+  // Compress and the event-loop probe are useful on a long-lived Node process.
+  // On Vercel they make cold starts fail (FST_UNDER_PRESSURE) or burn the
+  // budget before the first route is registered, so skip them there.
+  if (!process.env.VERCEL) {
+    const { constants: zlibConstants } = await import('node:zlib')
+    const { default: compress } = await import('@fastify/compress')
+    const { default: underPressure } = await import('@fastify/under-pressure')
+    await app.register(compress, {
+      global: true,
+      encodings: ['br', 'gzip', 'deflate'],
+      threshold: 1024,
+      brotliOptions: {
+        params: {
+          [zlibConstants.BROTLI_PARAM_QUALITY]: 4,
+          [zlibConstants.BROTLI_PARAM_MODE]: zlibConstants.BROTLI_MODE_TEXT,
+        },
       },
-    },
-    zlibOptions: { level: 4 },
-  })
-
-  // Shed load rather than queue it: under sustained pressure a 503 is a better
-  // answer than a request that times out after ten seconds.
-  await app.register(underPressure, {
-    maxEventLoopDelay: 1000,
-    maxHeapUsedBytes: 0,
-    maxRssBytes: 0,
-    retryAfter: 5,
-    message: 'The service is busy. Please retry shortly.',
-  })
+      zlibOptions: { level: 4 },
+    })
+    await app.register(underPressure, {
+      maxEventLoopDelay: 1000,
+      maxHeapUsedBytes: 0,
+      maxRssBytes: 0,
+      retryAfter: 5,
+      message: 'The service is busy. Please retry shortly.',
+    })
+  }
 
   /* ------------------------------------------------------------- identity */
+  const { default: authPlugin } = await import('./plugins/auth.js')
   await app.register(authPlugin)
 
   app.setErrorHandler(errorHandler)
@@ -130,17 +114,30 @@ export async function buildApp() {
   })
 
   /* --------------------------------------------------------------- routes */
-  await app.register(healthRoutes)
-  await app.register(authRoutes)
-  await app.register(storeRoutes)
-  await app.register(productRoutes)
-  await app.register(catalogRoutes)
-  await app.register(orderRoutes)
-  await app.register(peopleRoutes)
-  await app.register(couponRoutes)
-  await app.register(engageRoutes)
-  await app.register(analyticsRoutes)
-  await app.register(customizeRoutes)
+  // Static import() specifiers so Vercel file tracing still packs each file,
+  // while Node only evaluates a module when this function reaches it.
+  await app.register((await import('./routes/health.js')).default)
+  await app.register((await import('./routes/auth.js')).default)
+  await app.register((await import('./routes/stores.js')).default)
+  await app.register((await import('./routes/products.js')).default)
+  await app.register((await import('./routes/catalog.js')).default)
+  await app.register((await import('./routes/orders.js')).default)
+  await app.register((await import('./routes/people.js')).default)
+  await app.register((await import('./routes/coupons.js')).default)
+  await app.register((await import('./routes/engage.js')).default)
+  await app.register((await import('./routes/analytics.js')).default)
+  await app.register((await import('./routes/customize.js')).default)
+
+  const [{ default: multipart }, { default: uploadRoutes }] = await Promise.all([
+    import('@fastify/multipart'),
+    import('./routes/uploads.js'),
+  ])
+  await app.register(async (scope) => {
+    await scope.register(multipart, {
+      limits: { fileSize: 8 * 1024 * 1024, files: 1 },
+    })
+    await scope.register(uploadRoutes)
+  })
 
   return app
 }

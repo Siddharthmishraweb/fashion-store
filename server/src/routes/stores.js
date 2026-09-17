@@ -63,7 +63,7 @@ export default async function storeRoutes(app) {
             )::text as payload,
             count(*) over() as total
           from stores
-          where (${q ? sql`(name ilike ${`%${q}%`} or slug ilike ${`%${q}%`})` : sql`true`})
+          where (${q ? sql`(name ilike ${`%${q}%`} or slug ilike ${`%${q}%`} or city ilike ${`%${q}%`})` : sql`true`})
             and (${status ? sql`status = ${status}` : sql`status <> 'draft'`})
           order by gmv desc, name
           limit ${limit} offset ${offset}
@@ -150,7 +150,7 @@ export default async function storeRoutes(app) {
           ${sql.json({ items: [] })}, ${sql.json({ items: [] })},
           ${sql.json({ name, tagline, logo: null, favicon: null })},
           ${sql.json({ currency: 'INR', locale: 'en', supportEmail: ownerEmail, supportPhone: '' })},
-          ${sql.json({ instagram: `@${slug.replace(/-/g, '')}`, facebook: slug })},
+          ${sql.json({ instagram: clean.instagramHandle(body.instagram) || `@${slug.replace(/-/g, '')}`, facebook: slug })},
           ${sql.json([])}, ${name}, ${clean.imageUrl(body.coverImage) || null}
         )
         on conflict (slug) do nothing
@@ -197,6 +197,7 @@ export default async function storeRoutes(app) {
 
     if (patch.settings) patch.settings = sql.json(patch.settings)
     if (patch.branding) patch.branding = sql.json(patch.branding)
+    if (patch.social) patch.social = sql.json(patch.social)
 
     const [updated] = await sql`
       update stores set ${sql(patch, ...Object.keys(patch))} where id = ${store.id} returning *

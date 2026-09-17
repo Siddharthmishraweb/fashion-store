@@ -31,6 +31,20 @@ export function cx(...parts) {
   return parts.filter(Boolean).join(' ')
 }
 
+/** @handle from a typed handle or instagram.com URL. */
+export function instagramHandle(value) {
+  const raw = String(value ?? '').trim()
+  if (!raw) return ''
+  const fromUrl = raw.match(/instagram\.com\/([A-Za-z0-9._]+)/i)
+  const handle = (fromUrl?.[1] || raw.replace(/^@+/, '')).replace(/[^A-Za-z0-9._]/g, '').slice(0, 30)
+  return handle ? `@${handle}` : ''
+}
+
+export function instagramUrl(value) {
+  const handle = instagramHandle(value).replace(/^@/, '')
+  return handle ? `https://www.instagram.com/${handle}/` : ''
+}
+
 export function debounce(fn, wait = 280) {
   let timer
   const wrapped = (...args) => {

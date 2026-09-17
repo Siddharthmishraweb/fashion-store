@@ -1,0 +1,5 @@
+.localdb
+.env
+*.log
+bench
+node_modules

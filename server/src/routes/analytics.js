@@ -24,7 +24,8 @@ async function monthlySeries(tenantId) {
     select
       date_trunc('month', day) as month,
       sum(orders)::int as orders,
-      sum(gmv) as gmv
+      sum(gmv) as gmv,
+      sum(net_profit) as "netProfit"
     from daily_stats
     where day >= date_trunc('month', current_date) - interval '6 months'
       ${tenantId ? sql`and tenant_id = ${tenantId}` : sql``}
@@ -36,12 +37,13 @@ async function monthlySeries(tenantId) {
     return [`${date.getFullYear()}-${date.getMonth()}`, {
       gmv: Number(row.gmv) || 0,
       orders: row.orders || 0,
+      netProfit: Number(row.netProfit) || 0,
     }]
   }))
   const now = new Date()
   return Array.from({ length: 7 }, (_, index) => {
     const date = new Date(now.getFullYear(), now.getMonth() - (6 - index), 1)
-    const stats = byMonth.get(`${date.getFullYear()}-${date.getMonth()}`) || { gmv: 0, orders: 0 }
+    const stats = byMonth.get(`${date.getFullYear()}-${date.getMonth()}`) || { gmv: 0, orders: 0, netProfit: 0 }
     return { label: MONTHS[date.getMonth()], ...stats }
   })
 }
@@ -52,10 +54,10 @@ export default async function analyticsRoutes(app) {
     app.requireSuperAdmin(request)
 
     const body = await cached(
-      'analytics:platform',
+      'analytics:platform:v2',
       [tags.storeList()],
       async () => {
-        const [[totals], [products], [customers], series] = await Promise.all([
+        const [[totals], [products], [customers], [profit], shops, series] = await Promise.all([
           sql`
             select
               count(*)::int as stores,
@@ -66,17 +68,40 @@ export default async function analyticsRoutes(app) {
           `,
           sql`select count(*)::int as products from products`,
           sql`select count(*)::int as customers from customers`,
+          sql`
+            select coalesce(sum(net_profit), 0) as "netProfit"
+            from orders
+            where status not in ('cancelled', 'returned', 'refunded')
+          `,
+          sql`
+            select
+              s.id, s.slug, s.name, s.city, s.status, s.gmv, s.orders_count as "ordersCount",
+              coalesce((
+                select sum(o.net_profit) from orders o
+                where o.tenant_id = s.id and o.status not in ('cancelled', 'returned', 'refunded')
+              ), 0) as "netProfit"
+            from stores s
+            order by s.gmv desc, s.name
+          `,
           monthlySeries(null),
         ])
 
+        const gmv = Number(totals.gmv) || 0
+        const netProfit = Number(profit.netProfit) || 0
         return JSON.stringify({
           ...totals,
-          gmv: Number(totals.gmv),
+          gmv,
           products: products.products,
           customers: customers.customers,
-          // Platform revenue is the commission taken on gross merchandise value.
-          revenue: Math.round(Number(totals.gmv) * 0.18),
+          revenue: gmv,
+          netProfit,
+          netIncome: netProfit,
           conversion: 2.8,
+          shops: shops.map((shop) => ({
+            ...shop,
+            gmv: Number(shop.gmv) || 0,
+            netProfit: Number(shop.netProfit) || 0,
+          })),
           series,
         })
       },
@@ -92,7 +117,7 @@ export default async function analyticsRoutes(app) {
     const { tenantId } = app.requireTenant(request, 'store.dashboard', clean.text(request.query.tenantId, 60))
 
     const body = await cached(
-      `analytics:store:v2:${tenantId}`,
+      `analytics:store:v3:${tenantId}`,
       [tags.store(tenantId), tags.products(tenantId)],
       async () => {
         const [[store], [stock], [orderStats], [topProducts], [recentOrders], series] = await Promise.all([
@@ -112,6 +137,7 @@ export default async function analyticsRoutes(app) {
             select
               count(*)::int as orders,
               coalesce(sum(total), 0) as sales,
+              coalesce(sum(net_profit) filter (where status not in ('cancelled', 'returned', 'refunded')), 0) as "netProfit",
               count(*) filter (where status = 'placed')::int as "awaitingAction",
               count(*) filter (where status in ('cancelled', 'returned', 'refunded'))::int as lost
             from orders where tenant_id = ${tenantId}
@@ -139,13 +165,15 @@ export default async function analyticsRoutes(app) {
         ])
 
         const sales = Number(orderStats.sales) || Number(store?.gmv || 0)
+        const netProfit = Number(orderStats.netProfit) || 0
         const orders = orderStats.orders || store?.orders_count || 0
         const customers = store?.customers_count || 0
         const conversion = customers > 0 ? rate(orders, customers) : (orders > 0 ? 100 : 0)
         const abandonment = rate(orderStats.lost, orders)
         return [
           '{"sales":', sales,
-          ',"revenue":', Math.round(sales * 0.82),
+          ',"revenue":', netProfit,
+          ',"netProfit":', netProfit,
           ',"orders":', orders,
           ',"awaitingAction":', orderStats.awaitingAction,
           ',"products":', stock.products,

@@ -1,16 +1,21 @@
 import postgres from 'postgres'
 import { config } from '../config/env.js'
 
+const serverless = Boolean(process.env.VERCEL)
+const needsSsl = /sslmode=require/i.test(config.db.url) || serverless
+
 /*
  * A single pooled client for the process. postgres.js keeps prepared statements
  * per connection and pipelines queries on the same connection, which is where
  * most of the per-request latency saving comes from.
  */
 export const sql = postgres(config.db.url, {
-  max: config.db.poolMax,
+  max: serverless ? 1 : config.db.poolMax,
   idle_timeout: config.db.idleTimeout,
   connect_timeout: config.db.connectTimeout,
-  prepare: true,
+  // Neon/PgBouncer transaction pooling cannot reuse named prepared statements.
+  prepare: !serverless && !/-pooler/i.test(config.db.url),
+  ssl: needsSsl ? 'require' : false,
   // bigint columns (count(*), sums) arrive as JS numbers rather than strings.
   types: {
     bigint: {

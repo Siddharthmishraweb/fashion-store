@@ -79,3 +79,37 @@ Admin: `/admin` · Super admin: `/super-admin`
 
 - [Adding a new company](docs/adding-a-company.md) — onboard a storefront, create the owner login, and launch the shop.
 - [GitHub Pages](docs/github-pages.md) — mock vault (`USE_MOCK`) and static deploy. The Node API cannot run on Pages.
+
+## Image uploads
+
+All image uploads go through one function: `server/src/lib/storage/index.js` → `uploadImage()`.
+
+Today that adapter talks to [Cloudinary](https://cloudinary.com) (free tier). The database stores only the returned `https://` URL. To move to AWS S3 later, implement `server/src/lib/storage/s3.js` and set `STORAGE_DRIVER=s3`. Routes, editors, and product rows do not change.
+
+Staff editors (products, banners) can upload a file in the admin UI. The client posts to `POST /uploads`, receives `{ url }`, and saves that URL on the record.
+
+## Deploy on Vercel
+
+You need two Vercel projects (frontend cannot host Fastify + Postgres on GitHub Pages either). Use a hosted Postgres such as [Neon](https://neon.tech) (free).
+
+### 1. API (`server/`)
+
+1. New Vercel project with **Root Directory** `server`.
+2. Environment variables from `server/.env.example`: `DATABASE_URL`, `AUTH_SECRET` (64+ random chars), `CORS_ORIGINS` (your frontend origin), Cloudinary keys, `STORAGE_DRIVER=cloudinary`.
+3. After the first deploy, run migrate + seed once (Vercel CLI or any machine with the same `DATABASE_URL`):
+
+```bash
+cd server
+npx vercel env pull .env
+npm run migrate
+npm run seed
+```
+
+### 2. Frontend (repo root)
+
+1. New Vercel project with **Root Directory** `.` (this repo).
+2. Environment: `VITE_USE_MOCK=false`, `VITE_API_URL=https://<your-api-project>.vercel.app`.
+3. Redeploy after setting env so Vite bakes `VITE_*` into the bundle.
+
+The GitHub Pages site at `/fashion-store/` can stay on the in-browser mock (`USE_MOCK=true`).
+

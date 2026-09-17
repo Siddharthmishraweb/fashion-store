@@ -124,6 +124,15 @@ export function storePatch(body, row, { isSuper }) {
     }
   }
 
+  if (body.social !== undefined) {
+    const social = body.social || {}
+    patch.social = {
+      ...(row.social || {}),
+      instagram: clean.instagramHandle(social.instagram),
+      facebook: clean.text(social.facebook ?? row.social?.facebook, 80),
+    }
+  }
+
   if (body.branding !== undefined) {
     const branding = body.branding || {}
     patch.branding = {

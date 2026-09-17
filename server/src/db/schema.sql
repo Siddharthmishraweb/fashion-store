@@ -153,6 +153,8 @@ create table if not exists products (
   price          numeric(12, 2) not null default 0,
   mrp            numeric(12, 2) not null default 0,
   gst            numeric(5, 2) not null default 5,
+  cost_price     numeric(12, 2) not null default 0,
+  dispatch_charge numeric(12, 2) not null default 0,
   fabric         text not null default '',
   color          text not null default '',
   colors         text[] not null default '{}',
@@ -296,6 +298,9 @@ create table if not exists orders (
   tracking       jsonb,
   note           text not null default '',
   total          numeric(12, 2) not null default 0,
+  cost_total     numeric(12, 2) not null default 0,
+  dispatch_total numeric(12, 2) not null default 0,
+  net_profit     numeric(12, 2) not null default 0,
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now()
 );
@@ -405,6 +410,7 @@ create table if not exists daily_stats (
   day       date not null,
   orders    integer not null default 0,
   gmv       numeric(14, 2) not null default 0,
+  net_profit numeric(14, 2) not null default 0,
   primary key (tenant_id, day)
 );
 
@@ -414,3 +420,9 @@ create index if not exists daily_stats_day_idx on daily_stats (day);
 -- without --drop still picks up the read-model columns.
 alter table stores add column if not exists storefront_payload jsonb;
 alter table products add column if not exists sold_count integer not null default 0;
+alter table products add column if not exists cost_price numeric(12, 2) not null default 0;
+alter table products add column if not exists dispatch_charge numeric(12, 2) not null default 0;
+alter table orders add column if not exists cost_total numeric(12, 2) not null default 0;
+alter table orders add column if not exists dispatch_total numeric(12, 2) not null default 0;
+alter table orders add column if not exists net_profit numeric(12, 2) not null default 0;
+alter table daily_stats add column if not exists net_profit numeric(14, 2) not null default 0;

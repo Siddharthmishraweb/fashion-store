@@ -45,6 +45,20 @@ function multi(value, max = 20) {
  * Stable cache key for a filtered catalogue page. Params are sorted so that
  * ?a=1&b=2 and ?b=2&a=1 share one entry, and repeated params are preserved.
  */
+/** Staff views merge cost columns; shoppers only ever see the stored public payload. */
+function payloadSelect(staff) {
+  if (!staff) return sql`payload::text as payload`
+  return sql`(
+    payload
+    - 'costPrice' - 'dispatchCharge' - 'unitProfit'
+    || jsonb_build_object(
+      'costPrice', cost_price,
+      'dispatchCharge', dispatch_charge,
+      'unitProfit', round((price - coalesce(cost_price, 0) - coalesce(dispatch_charge, 0))::numeric, 2)
+    )
+  )::text as payload`
+}
+
 function queryKey(query, skip = ['tenantId']) {
   const pairs = []
   for (const [key, value] of Object.entries(query)) {
@@ -151,7 +165,7 @@ export default async function productRoutes(app) {
     // the client asked for so carousels keep their curated sequence.
     if (ids.length) {
       const rows = await sql`
-        select payload::text as payload from products
+        select ${payloadSelect(includeUnpublished)} from products
         where tenant_id = ${tenantId} and id = any(${ids}::text[])
           ${includeUnpublished ? sql`` : sql`and published`}
         order by array_position(${ids}::text[], id)
@@ -166,7 +180,7 @@ export default async function productRoutes(app) {
 
     const run = async () => {
       const rows = await sql`
-        select payload::text as payload, count(*) over() as total
+        select ${payloadSelect(includeUnpublished)}, count(*) over() as total
         from products
         where ${where}
         order by ${order}
@@ -313,7 +327,7 @@ export default async function productRoutes(app) {
 
     const build = async () => {
       const [product] = await sql`
-        select id, tenant_id, occasion, fabric, payload::text as payload
+        select id, tenant_id, occasion, fabric, ${payloadSelect(includeUnpublished)}
         from products
         where (id = ${key} or slug = ${key})
           ${tenantId ? sql`and tenant_id = ${tenantId}` : sql``}
@@ -420,14 +434,18 @@ export default async function productRoutes(app) {
   /* ------------------------------------------------------------- update */
   app.patch('/products/:id', async (request) => {
     const [existing] = await sql`
-      select tenant_id, payload from products where id = ${request.params.id} limit 1
+      select tenant_id, payload, cost_price, dispatch_charge from products where id = ${request.params.id} limit 1
     `
     if (!existing) throw notFound()
     app.requireTenant(request, 'store.products', existing.tenant_id)
 
     const dto = buildProductDto({
       body: request.body || {},
-      existing: existing.payload,
+      existing: {
+        ...existing.payload,
+        costPrice: Number(existing.cost_price) || 0,
+        dispatchCharge: Number(existing.dispatch_charge) || 0,
+      },
       id: request.params.id,
       tenantId: existing.tenant_id,
       slug: existing.payload.slug,
@@ -527,6 +545,8 @@ export default async function productRoutes(app) {
       slug: `${existing.slug}-copy-${productId.slice(-5)}`,
       sku: existing.payload.sku ? `${existing.payload.sku}-C` : '',
       published: false,
+      costPrice: Number(existing.cost_price) || 0,
+      dispatchCharge: Number(existing.dispatch_charge) || 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }

@@ -19,15 +19,25 @@ import { hasPermission, ORDER_STATUS, TERMINAL_STATUS } from '../domain/roles.js
  * - Totals are recomputed and stored; the client's arithmetic is ignored.
  */
 
-const orderPayload = sql`
-  jsonb_build_object(
-    'id', id, 'number', number, 'tenantId', tenant_id, 'customerId', customer_id,
-    'customerName', customer_name, 'customerEmail', customer_email,
-    'status', status, 'paymentStatus', payment_status, 'paymentMethod', payment_method,
-    'items', items, 'address', address, 'totals', totals, 'timeline', timeline,
-    'tracking', tracking, 'note', note, 'createdAt', created_at
-  )::text as payload
+const ORDER_PUBLIC_FIELDS = sql`
+  'id', id, 'number', number, 'tenantId', tenant_id, 'customerId', customer_id,
+  'customerName', customer_name, 'customerEmail', customer_email,
+  'status', status, 'paymentStatus', payment_status, 'paymentMethod', payment_method,
+  'items', items, 'address', address, 'totals', totals, 'timeline', timeline,
+  'tracking', tracking, 'note', note, 'createdAt', created_at
 `
+
+function orderPayload(includeProfit = false) {
+  if (!includeProfit) return sql`jsonb_build_object(${ORDER_PUBLIC_FIELDS})::text as payload`
+  return sql`
+    jsonb_build_object(
+      ${ORDER_PUBLIC_FIELDS},
+      'costTotal', cost_total,
+      'dispatchTotal', dispatch_total,
+      'netProfit', net_profit
+    )::text as payload
+  `
+}
 
 function validateAddress(address) {
   const fields = [
@@ -76,7 +86,7 @@ export default async function orderRoutes(app) {
     }
 
     const rows = await sql`
-      select ${orderPayload}, count(*) over() as total
+      select ${orderPayload(!auth.isCustomer)}, count(*) over() as total
       from orders
       where ${scope}
         ${status && ORDER_STATUS.includes(status) ? sql`and status = ${status}` : sql``}
@@ -93,7 +103,7 @@ export default async function orderRoutes(app) {
   app.get('/orders/:id', async (request, reply) => {
     const auth = app.requireUser(request)
     const [order] = await sql`
-      select id, tenant_id, user_id, customer_email, ${orderPayload}
+      select id, tenant_id, user_id, customer_email, ${orderPayload(!auth.isCustomer)}
       from orders where id = ${request.params.id} or number = ${request.params.id} limit 1
     `
     if (!order) throw notFound('We could not find that order.')
@@ -144,7 +154,7 @@ export default async function orderRoutes(app) {
         note = coalesce(${body.note === undefined ? null : clean.text(body.note, 400)}::text, note),
         updated_at = now()
       where id = ${request.params.id}
-      returning ${orderPayload}
+      returning ${orderPayload(true)}
     `
 
     privateCache(reply)
@@ -209,6 +219,8 @@ export default async function orderRoutes(app) {
 
       const lines = []
       let subtotal = 0
+      let costTotal = 0
+      let dispatchTotal = 0
 
       // Always touch rows in the same order. Two concurrent checkouts sharing
       // two products would otherwise be able to deadlock against each other.
@@ -226,7 +238,7 @@ export default async function orderRoutes(app) {
             payload = jsonb_set(payload, '{inventory}', to_jsonb(inventory - ${qty})),
             updated_at = now()
           where id = ${productId} and tenant_id = ${tenantId} and published and inventory >= ${qty}
-          returning id, name, price, payload -> 'images' -> 0 ->> 'src' as image
+          returning id, name, price, cost_price, dispatch_charge, payload -> 'images' -> 0 ->> 'src' as image
         `
         if (!reserved) {
           const [product] = await tx`
@@ -243,7 +255,11 @@ export default async function orderRoutes(app) {
         }
 
         const price = Number(reserved.price)
+        const costPrice = Number(reserved.cost_price) || 0
+        const dispatchCharge = Number(reserved.dispatch_charge) || 0
         subtotal += price * qty
+        costTotal += costPrice * qty
+        dispatchTotal += dispatchCharge * qty
         lines.push({ productId: reserved.id, name: reserved.name, image: reserved.image || '', price, qty })
       }
 
@@ -281,6 +297,7 @@ export default async function orderRoutes(app) {
         ? 0
         : config.commerce.shippingFee
       const total = Math.max(0, subtotal - discount + shipping)
+      const netProfit = Math.round((subtotal - discount - costTotal - dispatchTotal) * 100) / 100
       const rate = config.commerce.gstRate
       const totals = {
         subtotal,
@@ -313,15 +330,17 @@ export default async function orderRoutes(app) {
       const [created] = await tx`
         insert into orders (
           id, number, tenant_id, customer_id, user_id, customer_name, customer_email,
-          status, payment_status, payment_method, items, address, totals, timeline, total
+          status, payment_status, payment_method, items, address, totals, timeline,
+          total, cost_total, dispatch_total, net_profit
         ) values (
           ${newId('ord')}, ${sql`'VK' || nextval('order_number_seq')`}, ${tenantId},
           ${customer.id}, ${auth?.userId || null}, ${address.name}, ${email},
           'placed', ${paymentMethod === 'cod' ? 'pending' : 'paid'}, ${paymentMethod},
           ${sql.json(lines)}, ${sql.json(address)}, ${sql.json(totals)},
-          ${sql.json([{ status: 'placed', at: new Date().toISOString() }])}, ${total}
+          ${sql.json([{ status: 'placed', at: new Date().toISOString() }])},
+          ${total}, ${costTotal}, ${dispatchTotal}, ${netProfit}
         )
-        returning ${orderPayload}, number
+        returning ${orderPayload(false)}, number
       `
 
       /* ----------------------------------------------- counters and alerts */
@@ -333,11 +352,12 @@ export default async function orderRoutes(app) {
         where id = ${tenantId}
       `
       await tx`
-        insert into daily_stats (tenant_id, day, orders, gmv)
-        values (${tenantId}, current_date, 1, ${total})
+        insert into daily_stats (tenant_id, day, orders, gmv, net_profit)
+        values (${tenantId}, current_date, 1, ${total}, ${netProfit})
         on conflict (tenant_id, day) do update set
           orders = daily_stats.orders + 1,
-          gmv = daily_stats.gmv + ${total}
+          gmv = daily_stats.gmv + ${total},
+          net_profit = daily_stats.net_profit + ${netProfit}
       `
       await tx`
         insert into notifications (id, tenant_id, audience, type, title, body)

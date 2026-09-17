@@ -418,7 +418,7 @@ export default function ProductDetail() {
       ) : null}
 
       <Modal open={zoom} title={product.name} onClose={() => setZoom(false)} size="lg">
-        <img src={current.src} alt={product.name} className="zoom-img" />
+        <img src={current.src} alt={product.name} className="zoom-img" loading="lazy" decoding="async" />
       </Modal>
 
       {isMobile && !soldOut ? (

@@ -342,11 +342,25 @@ export function Accordion({ items }) {
 }
 
 const WIDTHS = [480, 768, 1024, 1440, 1920]
+const CLOUDINARY = /^(https:\/\/res\.cloudinary\.com\/[^/]+\/image\/upload\/)(.*)$/i
 
-/** Builds a width-based srcset for CDN URLs that accept a `w` query parameter. */
+function withCloudinaryWidth(src, width) {
+  const match = String(src).match(CLOUDINARY)
+  if (!match) return src
+  const rest = match[2].replace(/^(f_auto,q_auto(?:,[a-z0-9_,]+)?\/)/i, '')
+  return `${match[1]}f_auto,q_auto,c_limit,w_${width}/${rest}`
+}
+
+/** Width srcset for Cloudinary and for CDNs that already take a `w` query. */
 function buildSrcSet(src) {
-  if (!src || !/[?&]w=\d+/.test(src)) return undefined
-  return WIDTHS.map((w) => `${src.replace(/([?&]w=)\d+/, `$1${w}`)} ${w}w`).join(', ')
+  if (!src) return undefined
+  if (CLOUDINARY.test(src)) {
+    return WIDTHS.map((w) => `${withCloudinaryWidth(src, w)} ${w}w`).join(', ')
+  }
+  if (/[?&]w=\d+/.test(src)) {
+    return WIDTHS.map((w) => `${src.replace(/([?&]w=)\d+/, `$1${w}`)} ${w}w`).join(', ')
+  }
+  return undefined
 }
 
 export function OptimizedImage({
@@ -361,15 +375,19 @@ export function OptimizedImage({
   onError,
 }) {
   const safe = safeImageUrl(src)
+  const display = useMemo(
+    () => (safe && CLOUDINARY.test(safe) ? withCloudinaryWidth(safe, width || 1024) : safe),
+    [safe, width],
+  )
   const srcSet = useMemo(() => buildSrcSet(safe), [safe])
   const handleError = (e) => {
     e.currentTarget.classList.add('is-broken')
     onError?.(e)
   }
-  if (!safe) return <div className={cx('img-fallback', className)} style={{ width, height, ...style }} aria-hidden="true" />
+  if (!display) return <div className={cx('img-fallback', className)} style={{ width, height, ...style }} aria-hidden="true" />
   return (
     <img
-      src={safe}
+      src={display}
       srcSet={srcSet}
       sizes={srcSet ? sizes : undefined}
       alt={alt}

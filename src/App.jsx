@@ -1,53 +1,55 @@
 import { lazy, Suspense, useEffect, useRef } from 'react'
 import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { TenantProvider } from './context/TenantContext.jsx'
-import { StorefrontShell } from './components/layout/StorefrontShell.jsx'
-import { AdminShell, SuperAdminShell } from './components/admin/AdminChrome.jsx'
 import { Button, ErrorBoundary, Skeleton } from './components/common/index.jsx'
 import { useAuth } from './context/AuthContext.jsx'
 import { useToast } from './context/ToastContext.jsx'
 import { hasPermission, ROLES } from './config/constants.js'
 import { DEFAULT_STORE_SLUG } from './config/env.js'
-import {
-  AccountHome,
-  AccountLayout,
-  NotificationsPage,
-  OrderDetailPage,
-  OrdersPage,
-  SimpleAccount,
-} from './pages/storefront/Account.jsx'
-import CartPage, { WishlistPage } from './pages/storefront/CartWishlist.jsx'
-import CheckoutPage, { AuthPage } from './pages/storefront/CheckoutAuth.jsx'
-import {
-  CategoriesAdmin,
-  CollectionsAdmin,
-  CouponsAdmin,
-  CustomerAdminDetail,
-  CustomersAdmin,
-  InventoryAdmin,
-  OrderAdminDetail,
-  OrdersAdmin,
-  ProductEditor,
-  ProductsAdmin,
-  ReviewsAdmin,
-  StoreSettingsAdmin,
-  TeamAdmin,
-} from './pages/admin/Resources.jsx'
-import { BannersAdmin } from './pages/admin/Banners.jsx'
-import SuperDashboard, {
-  StoresAdmin,
-  SuperSettings,
-  ThemesAdmin,
-  UsersAdmin,
-} from './pages/superAdmin/index.jsx'
-import NotFound from './pages/NotFound.jsx'
+
+const named = (loader, name) => lazy(() => loader().then((mod) => ({ default: mod[name] })))
 
 const PlatformHome = lazy(() => import('./pages/platform/Home.jsx'))
 const StoreHome = lazy(() => import('./pages/storefront/Home.jsx'))
 const ProductList = lazy(() => import('./pages/storefront/ProductList.jsx'))
 const ProductDetail = lazy(() => import('./pages/storefront/ProductDetail.jsx'))
+const CartPage = lazy(() => import('./pages/storefront/CartWishlist.jsx'))
+const WishlistPage = named(() => import('./pages/storefront/CartWishlist.jsx'), 'WishlistPage')
+const CheckoutPage = lazy(() => import('./pages/storefront/CheckoutAuth.jsx'))
+const AuthPage = named(() => import('./pages/storefront/CheckoutAuth.jsx'), 'AuthPage')
+const AccountLayout = named(() => import('./pages/storefront/Account.jsx'), 'AccountLayout')
+const AccountHome = named(() => import('./pages/storefront/Account.jsx'), 'AccountHome')
+const OrdersPage = named(() => import('./pages/storefront/Account.jsx'), 'OrdersPage')
+const OrderDetailPage = named(() => import('./pages/storefront/Account.jsx'), 'OrderDetailPage')
+const SimpleAccount = named(() => import('./pages/storefront/Account.jsx'), 'SimpleAccount')
+const NotificationsPage = named(() => import('./pages/storefront/Account.jsx'), 'NotificationsPage')
+const StorefrontShell = named(() => import('./components/layout/StorefrontShell.jsx'), 'StorefrontShell')
+
 const AdminDashboard = lazy(() => import('./pages/admin/Dashboard.jsx'))
 const CustomizerPage = lazy(() => import('./pages/admin/Customizer.jsx'))
+const AdminShell = named(() => import('./components/admin/AdminChrome.jsx'), 'AdminShell')
+const SuperAdminShell = named(() => import('./components/admin/AdminChrome.jsx'), 'SuperAdminShell')
+const ProductsAdmin = named(() => import('./pages/admin/Resources.jsx'), 'ProductsAdmin')
+const ProductEditor = named(() => import('./pages/admin/Resources.jsx'), 'ProductEditor')
+const CategoriesAdmin = named(() => import('./pages/admin/Resources.jsx'), 'CategoriesAdmin')
+const CollectionsAdmin = named(() => import('./pages/admin/Resources.jsx'), 'CollectionsAdmin')
+const OrdersAdmin = named(() => import('./pages/admin/Resources.jsx'), 'OrdersAdmin')
+const OrderAdminDetail = named(() => import('./pages/admin/Resources.jsx'), 'OrderAdminDetail')
+const CustomersAdmin = named(() => import('./pages/admin/Resources.jsx'), 'CustomersAdmin')
+const CustomerAdminDetail = named(() => import('./pages/admin/Resources.jsx'), 'CustomerAdminDetail')
+const InventoryAdmin = named(() => import('./pages/admin/Resources.jsx'), 'InventoryAdmin')
+const CouponsAdmin = named(() => import('./pages/admin/Resources.jsx'), 'CouponsAdmin')
+const ReviewsAdmin = named(() => import('./pages/admin/Resources.jsx'), 'ReviewsAdmin')
+const TeamAdmin = named(() => import('./pages/admin/Resources.jsx'), 'TeamAdmin')
+const StoreSettingsAdmin = named(() => import('./pages/admin/Resources.jsx'), 'StoreSettingsAdmin')
+const BannersAdmin = named(() => import('./pages/admin/Banners.jsx'), 'BannersAdmin')
+
+const SuperDashboard = lazy(() => import('./pages/superAdmin/index.jsx'))
+const StoresAdmin = named(() => import('./pages/superAdmin/index.jsx'), 'StoresAdmin')
+const ThemesAdmin = named(() => import('./pages/superAdmin/index.jsx'), 'ThemesAdmin')
+const UsersAdmin = named(() => import('./pages/superAdmin/index.jsx'), 'UsersAdmin')
+const SuperSettings = named(() => import('./pages/superAdmin/index.jsx'), 'SuperSettings')
+const NotFound = lazy(() => import('./pages/NotFound.jsx'))
 
 const STORE_ROLES = [
   ROLES.STORE_OWNER,

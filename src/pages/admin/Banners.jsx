@@ -18,7 +18,7 @@ import {
   StatusPill,
 } from '../../components/common/index.jsx'
 import { cx, formatDate, withinDateRange } from '../../utils/index.js'
-import { safeImageUrl, safeUrl } from '../../utils/security.js'
+import { uploadImageFile } from '../../services/storage/uploadImage.js'
 
 const BLANK = {
   name: '',
@@ -90,27 +90,53 @@ function DevicePreview({ form, device }) {
 function ImagePicker({ label, field, form, setField, error, hint }) {
   const [open, setOpen] = useState(false)
   const [broken, setBroken] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [uploadError, setUploadError] = useState('')
   const preview = safeImageUrl(form[field])
   const showPreview = preview && !broken
+  const message = error || uploadError
+
+  const onFile = async (event) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    setUploadError('')
+    setBusy(true)
+    try {
+      const result = await uploadImageFile(file, { folder: 'banners' })
+      setBroken(false)
+      setField(field, result.url)
+    } catch (err) {
+      setUploadError(err.message || 'Upload failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="image-picker">
       <Input
         label={label}
         value={form[field]}
-        error={error}
-        hint={hint}
+        error={message}
+        hint={hint || 'Upload a file, or paste an https:// image address'}
         placeholder="https://…"
         onChange={(e) => {
           setBroken(false)
+          setUploadError('')
           setField(field, e.target.value)
         }}
       />
       <div className="image-picker-row">
         {showPreview ? (
-          <img src={preview} alt="" className="image-picker-thumb" onError={() => setBroken(true)} />
+          <img src={preview} alt="" className="image-picker-thumb" loading="lazy" decoding="async" onError={() => setBroken(true)} />
         ) : (
           <span className="image-picker-thumb empty" aria-hidden="true" />
         )}
+        <label className="btn btn-ghost btn-sm">
+          {busy ? 'Uploading…' : 'Upload image'}
+          <input type="file" accept="image/*" hidden disabled={busy} onChange={onFile} />
+        </label>
         <Button variant="ghost" size="sm" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
           {open ? 'Close library' : 'Choose from library'}
         </Button>
@@ -141,7 +167,6 @@ function ImagePicker({ label, field, form, setField, error, hint }) {
 function BannerEditor({ banner, storeSlug, onClose, onSaved }) {
   const isNew = !banner?.id
   const [form, setForm] = useState(() => ({ ...BLANK, ...(banner || {}), ctaUrl: banner?.ctaUrl || `/store/${storeSlug}/products` }))
-  const [device, setDevice] = useState('desktop')
   const [touched, setTouched] = useState(false)
   const errors = useMemo(() => validate(form), [form])
   const hasErrors = Object.keys(errors).length > 0
@@ -174,21 +199,11 @@ function BannerEditor({ banner, storeSlug, onClose, onSaved }) {
       }
     >
       <div className="banner-editor">
-        <div className="device-switch" role="tablist" aria-label="Preview device">
-          {Object.entries(BANNER_ASPECTS).map(([key, meta]) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={device === key}
-              className={device === key ? 'on' : ''}
-              onClick={() => setDevice(key)}
-            >
-              {meta.label}
-            </button>
+        <div className="banner-preview-stack">
+          {Object.keys(BANNER_ASPECTS).map((device) => (
+            <DevicePreview key={device} form={form} device={device} />
           ))}
         </div>
-        <DevicePreview form={form} device={device} />
 
         {error ? <p className="form-error" role="alert">{error}</p> : null}
 

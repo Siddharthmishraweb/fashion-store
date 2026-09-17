@@ -78,6 +78,15 @@ export function oneOf(value, allowed, fallback = allowed[0]) {
   return allowed.includes(value) ? value : fallback
 }
 
+/** Stores @handle only. Accepts a handle, @handle, or an instagram.com URL. */
+export function instagramHandle(value) {
+  const raw = text(value, 120)
+  if (!raw) return ''
+  const fromUrl = raw.match(/instagram\.com\/([A-Za-z0-9._]+)/i)
+  const handle = (fromUrl?.[1] || raw.replace(/^@+/, '')).replace(/[^A-Za-z0-9._]/g, '').slice(0, 30)
+  return handle ? `@${handle}` : ''
+}
+
 export function stringArray(value, { max = 40, itemLength = 60 } = {}) {
   if (!Array.isArray(value)) return []
   const seen = new Set()

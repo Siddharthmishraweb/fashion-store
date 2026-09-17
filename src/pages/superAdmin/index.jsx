@@ -18,6 +18,7 @@ import { DEFAULT_STORE_SLUG, env } from '../../config/env.js'
 import { formatCurrency, formatDate, formatPercent, slugify } from '../../utils/index.js'
 import { passwordIssues } from '../../utils/security.js'
 import { THEMES } from '../../theme/themes.js'
+import { ThemePreview } from '../../components/commerce/ThemePreview.jsx'
 
 export default function SuperDashboard() {
   const { data, loading, error, refetch } = useAsync(() => analyticsApi.platform(), [])
@@ -37,13 +38,33 @@ export default function SuperDashboard() {
         <Stat label="Products" value={data.products} />
         <Stat label="Customers" value={data.customers} />
         <Stat label="Orders" value={data.orders} />
-        <Stat label="GMV" value={formatCurrency(data.gmv)} />
-        <Stat label="Platform revenue" value={formatCurrency(data.revenue)} />
+        <Stat label="GMV / revenue" value={formatCurrency(data.gmv ?? data.revenue)} />
+        <Stat label="Net income" value={formatCurrency(data.netProfit ?? data.netIncome)} hint="All shops, after cost and dispatch" />
         <Stat label="Conversion" value={formatPercent(data.conversion)} />
       </div>
       <div className="admin-card">
         <h3>Gross merchandise value</h3>
         <MiniChart series={data.series} />
+      </div>
+      <div className="admin-card">
+        <h3>Income by storefront</h3>
+        <DataTable
+          emptyTitle="No storefronts yet"
+          rows={data.shops || []}
+          columns={[
+            { key: 'name', label: 'Storefront', render: (r) => (
+              <span>
+                <strong>{r.name}</strong>
+                <small className="muted">/store/{r.slug} · {r.city}</small>
+              </span>
+            ) },
+            { key: 'status', label: 'Status', render: (r) => <StatusPill status={r.status} /> },
+            { key: 'ordersCount', label: 'Orders' },
+            { key: 'gmv', label: 'Revenue', render: (r) => formatCurrency(r.gmv) },
+            { key: 'netProfit', label: 'Net income', render: (r) => formatCurrency(r.netProfit) },
+            { key: 'open', label: '', render: (r) => <Link to={`/store/${r.slug}`} target="_blank" rel="noreferrer">Open</Link> },
+          ]}
+        />
       </div>
     </div>
   )
@@ -55,7 +76,7 @@ export function StoresAdmin() {
   const search = useDebounced(q, 300)
   const { data, loading, error, refetch } = useAsync(() => storesApi.list({ q: search, limit: 50 }), [search])
   const [form, setForm] = useState({
-    name: '', slug: '', ownerName: '', email: '', password: '', phone: '', city: '', themeId: THEMES[0].id,
+    name: '', slug: '', ownerName: '', email: '', password: '', phone: '', city: '', themeId: THEMES[0].id, instagram: '',
   })
   const [confirming, setConfirming] = useState(null)
 
@@ -73,7 +94,7 @@ export function StoresAdmin() {
     if (issues.length) throw new Error(`Owner password needs ${issues.join(', ')}.`)
     const store = await storesApi.create(payload)
     push(`${store.name} is live at /store/${store.slug}. The owner can sign in at /login.`)
-    setForm({ name: '', slug: '', ownerName: '', email: '', password: '', phone: '', city: '', themeId: THEMES[0].id })
+    setForm({ name: '', slug: '', ownerName: '', email: '', password: '', phone: '', city: '', themeId: THEMES[0].id, instagram: '' })
     refetch()
   })
 
@@ -117,7 +138,16 @@ export function StoresAdmin() {
             onChange={(e) => setForm({ ...form, themeId: e.target.value })}
             options={THEMES.map((t) => ({ value: t.id, label: t.name }))}
           />
+          <Input
+            label="Instagram"
+            placeholder="@yourhouse"
+            value={form.instagram || ''}
+            onChange={(e) => setForm({ ...form, instagram: e.target.value })}
+          />
         </div>
+        {THEMES.find((t) => t.id === form.themeId) ? (
+          <ThemePreview theme={THEMES.find((t) => t.id === form.themeId)} storeName={form.name || 'Your house'} />
+        ) : null}
         <Button type="submit" loading={pending}>Create storefront</Button>
       </form>
 
@@ -196,11 +226,7 @@ export function ThemesAdmin() {
       <div className="theme-grid">
         {themes.map((theme) => (
           <article className="theme-card" key={theme.id}>
-            <div className="palette">
-              {[theme.primaryColor, theme.accentColor, theme.backgroundColor, theme.textColor].map((c, i) => (
-                <span key={`${theme.id}-${i}`} style={{ background: c }} />
-              ))}
-            </div>
+            <ThemePreview theme={theme} storeName={theme.name} />
             <div className="theme-card-body">
               <h3>{theme.name}</h3>
               <p className="muted">{theme.description}</p>

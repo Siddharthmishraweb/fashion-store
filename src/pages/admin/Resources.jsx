@@ -29,6 +29,7 @@ import {
   Textarea,
   Toggle,
 } from '../../components/common/index.jsx'
+import { ImageUploadField } from '../../components/common/ImageUpload.jsx'
 import { ORDER_STATUS, PRODUCT_ATTRIBUTES, ROLES } from '../../config/constants.js'
 import { cx, downloadFile, formatCurrency, formatDate, slugify, toCsv } from '../../utils/index.js'
 import { isEmail, isPhone, safeImageUrl } from '../../utils/security.js'
@@ -162,6 +163,7 @@ export function ProductsAdmin() {
           },
           { key: 'sku', label: 'SKU' },
           { key: 'price', label: 'Price', render: (r) => formatCurrency(r.price) },
+          { key: 'unitProfit', label: 'Net / unit', render: (r) => (r.unitProfit == null ? '—' : formatCurrency(r.unitProfit)) },
           {
             key: 'inventory',
             label: 'Stock',
@@ -230,6 +232,8 @@ const PRODUCT_FIELDS = [
   ['sku', 'SKU'],
   ['price', 'Selling price (₹)', { type: 'number', required: true, min: 1 }],
   ['mrp', 'MRP (₹)', { type: 'number', min: 0 }],
+  ['costPrice', 'Cost price (₹)', { type: 'number', min: 0 }],
+  ['dispatchCharge', 'Dispatch / delivery cost (₹)', { type: 'number', min: 0 }],
   ['inventory', 'Stock on hand', { type: 'number', min: 0 }],
   ['fabric', 'Fabric', { options: PRODUCT_ATTRIBUTES.fabric }],
   ['weave', 'Weave', { options: PRODUCT_ATTRIBUTES.weave }],
@@ -279,6 +283,8 @@ function emptyProductForm() {
     description: '',
     price: '',
     mrp: '',
+    costPrice: '',
+    dispatchCharge: '',
     inventory: 0,
     fabric: 'Silk',
     weave: '',
@@ -300,11 +306,15 @@ function validateProductForm(form, tenantId) {
   const name = String(form.name || '').trim()
   const price = Number(form.price)
   const mrp = form.mrp === '' || form.mrp == null ? 0 : Number(form.mrp)
+  const costPrice = form.costPrice === '' || form.costPrice == null ? 0 : Number(form.costPrice)
+  const dispatchCharge = form.dispatchCharge === '' || form.dispatchCharge == null ? 0 : Number(form.dispatchCharge)
   const inventory = Number(form.inventory)
   if (!tenantId) errors.form = 'This account is not linked to a store, so the product cannot be saved.'
   if (!name) errors.name = 'A product name is required.'
   if (!Number.isFinite(price) || price <= 0) errors.price = 'Set a selling price above zero.'
   if (form.mrp !== '' && form.mrp != null && (!Number.isFinite(mrp) || mrp < 0)) errors.mrp = 'MRP must be a number.'
+  if (!Number.isFinite(costPrice) || costPrice < 0) errors.costPrice = 'Cost price must be a number.'
+  if (!Number.isFinite(dispatchCharge) || dispatchCharge < 0) errors.dispatchCharge = 'Dispatch charge must be a number.'
   if (Number.isFinite(price) && Number.isFinite(mrp) && mrp > 0 && mrp < price) {
     errors.mrp = 'MRP cannot be lower than the selling price.'
   }
@@ -324,6 +334,8 @@ function validateProductForm(form, tenantId) {
       description: form.description || '',
       price,
       mrp: mrp || price,
+      costPrice,
+      dispatchCharge,
       inventory: Number.isFinite(inventory) ? inventory : 0,
       fabric: String(form.fabric || '').trim(),
       weave: String(form.weave || '').trim(),
@@ -441,6 +453,12 @@ export function ProductEditor() {
               )
             ))}
           </div>
+          {Number.isFinite(Number(form.price)) && Number(form.price) > 0 ? (
+            <p className="muted">
+              Net profit per piece: <strong>{formatCurrency(Number(form.price) - (Number(form.costPrice) || 0) - (Number(form.dispatchCharge) || 0))}</strong>
+              {' '}(selling price − cost − dispatch)
+            </p>
+          ) : null}
           <Textarea label="Description" rows={5} value={form.description} onChange={(e) => set('description', e.target.value)} />
           <div className="grid-2">
             <Textarea label="Care instructions" rows={3} value={form.care} onChange={(e) => set('care', e.target.value)} />
@@ -460,18 +478,17 @@ export function ProductEditor() {
 
         <aside className="admin-card">
           <h3>Images</h3>
-          <p className="muted">The first valid image is used on listing pages. Paste an https:// address, or leave a row blank to skip it.</p>
+          <p className="muted">Upload a file to cloud storage, or paste an https:// address. The first valid image is used on listing pages.</p>
           {(form.images || []).map((img, i) => (
-            <div key={`${img.src}-${i}`} className="image-row">
-              {safeImageUrl(img.src) ? <img src={safeImageUrl(img.src)} alt="" /> : <span className="image-picker-thumb empty" />}
-              <Input
-                label={`Image ${i + 1} URL`}
+            <div key={`image-${i}`} className="image-row">
+              <ImageUploadField
+                label={`Image ${i + 1}`}
                 value={img.src}
                 error={fieldErrors[`image-${i}`]}
-                placeholder="https://…"
-                onChange={(e) => {
+                folder="products"
+                onChange={(url) => {
                   const next = [...form.images]
-                  next[i] = { ...next[i], src: e.target.value }
+                  next[i] = { ...next[i], src: url }
                   set('images', next)
                 }}
               />
@@ -710,6 +727,9 @@ export function OrderAdminDetail() {
             {data.totals.discount ? <div><dt>Discount</dt><dd>−{formatCurrency(data.totals.discount)}</dd></div> : null}
             <div><dt>Shipping</dt><dd>{data.totals.shipping ? formatCurrency(data.totals.shipping) : 'Free'}</dd></div>
             <div className="grand"><dt>Total</dt><dd>{formatCurrency(data.totals.total)}</dd></div>
+            {data.netProfit != null ? (
+              <div><dt>Net profit</dt><dd>{formatCurrency(data.netProfit)}</dd></div>
+            ) : null}
           </dl>
         </div>
 
@@ -1070,6 +1090,7 @@ export function StoreSettingsAdmin() {
     supportEmail: store?.settings?.supportEmail || '',
     supportPhone: store?.settings?.supportPhone || '',
     locale: store?.settings?.locale || 'en',
+    instagram: store?.social?.instagram || '',
   }
   const set = (key, value) => setDraft({ ...form, [key]: value })
 
@@ -1088,6 +1109,7 @@ export function StoreSettingsAdmin() {
       city: form.city,
       branding: { name: form.name, tagline: form.tagline },
       settings: { supportEmail: form.supportEmail, supportPhone: form.supportPhone, locale: form.locale },
+      social: { instagram: form.instagram },
     })
     push('Settings saved')
     refetch()
@@ -1117,6 +1139,13 @@ export function StoreSettingsAdmin() {
           <Input label="Support phone" value={form.supportPhone} onChange={(e) => set('supportPhone', e.target.value)} />
           <Input label="City" value={form.city} onChange={(e) => set('city', e.target.value)} />
           <Select label="Storefront language" value={form.locale} onChange={(e) => set('locale', e.target.value)} options={[{ value: 'en', label: 'English' }, { value: 'hi', label: 'हिन्दी' }]} />
+          <Input
+            label="Instagram"
+            hint="Shown in the storefront footer. Handle or full profile URL"
+            placeholder="@yourhouse"
+            value={form.instagram}
+            onChange={(e) => set('instagram', e.target.value)}
+          />
         </div>
         <Textarea label="Address" rows={2} value={form.address} onChange={(e) => set('address', e.target.value)} />
         <Input
