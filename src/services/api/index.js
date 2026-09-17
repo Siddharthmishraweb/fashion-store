@@ -1,5 +1,6 @@
 import { buildQuery, productsApi } from './products.js'
 import { del, get, patch, post } from './client.js'
+import { isPreviewTenantId, previewValidateCoupon } from '../preview/storefront.js'
 
 export { productsApi }
 
@@ -49,12 +50,20 @@ export const couponsApi = {
   list: (tenantId) => get(`/coupons?${buildQuery({ tenantId })}`),
   create: (body) => post('/coupons', body),
   remove: (id) => del(`/coupons/${id}`),
-  validate: (body) => post('/coupons/validate', body),
+  validate: (body) => (isPreviewTenantId(body?.tenantId) ? Promise.resolve(previewValidateCoupon(body)) : post('/coupons/validate', body)),
 }
 
 export const reviewsApi = {
   list: (params = {}) => get(`/reviews?${buildQuery(params)}`),
-  create: (body) => post('/reviews', body),
+  create: (body) => (isPreviewTenantId(body?.tenantId)
+    ? Promise.resolve({
+      id: `rev_preview_${Date.now()}`,
+      ...body,
+      author: 'Preview guest',
+      verified: false,
+      createdAt: new Date().toISOString(),
+    })
+    : post('/reviews', body)),
 }
 
 export const themesApi = {
@@ -82,6 +91,10 @@ export const notificationsApi = {
 }
 
 export const engageApi = {
-  waitlist: (body) => post('/waitlist', body),
-  newsletter: (body) => post('/newsletter', body),
+  waitlist: (body) => (isPreviewTenantId(body?.tenantId) ? Promise.resolve({ ok: true, preview: true }) : post('/waitlist', body)),
+  newsletter: (body) => (
+    isPreviewTenantId(body?.tenantId) || (typeof window !== 'undefined' && window.location.pathname.startsWith('/preview/'))
+      ? Promise.resolve({ ok: true, preview: true })
+      : post('/newsletter', body)
+  ),
 }

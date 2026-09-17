@@ -33,10 +33,10 @@ const LINKS = [
 ]
 
 export function AccountLayout() {
-  const { tenant } = useTenant()
+  const { tenant, basePath } = useTenant()
   const { user, logout } = useAuth()
   const navigate = useNavigate()
-  const base = `/store/${tenant.slug}/account`
+  const base = `${basePath}/account`
 
   if (!user) {
     return (
@@ -44,7 +44,7 @@ export function AccountLayout() {
         <EmptyState
           title="Sign in to see your account"
           hint="Your orders, wishlist, and addresses live here."
-          action={<Link className="btn" to={`/store/${tenant.slug}/login`}>Sign in</Link>}
+          action={<Link className="btn" to={`${basePath}/login`}>Sign in</Link>}
         />
       </div>
     )
@@ -65,7 +65,7 @@ export function AccountLayout() {
           variant="ghost"
           onClick={async () => {
             await logout()
-            navigate(`/store/${tenant.slug}`)
+            navigate(basePath)
           }}
         >
           Sign out

@@ -61,7 +61,20 @@ export function TenantProvider({ slug, previewConfig, children }) {
   }, [theme])
 
   const value = useMemo(
-    () => ({ ...state, theme, previewing: Boolean(previewThemeId), reload: load, slug }),
+    () => {
+      const resolvedSlug = state.tenant?.slug || slug
+      const isPreview = Boolean(state.tenant?.isPreview)
+      const basePath = state.tenant?.basePath || (resolvedSlug ? `/store/${resolvedSlug}` : '')
+      return {
+        ...state,
+        theme,
+        previewing: isPreview || Boolean(previewThemeId),
+        isPreview,
+        basePath,
+        reload: load,
+        slug: resolvedSlug,
+      }
+    },
     [state, theme, previewThemeId, load, slug],
   )
   return <TenantContext.Provider value={value}>{children}</TenantContext.Provider>

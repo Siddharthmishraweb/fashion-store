@@ -44,7 +44,7 @@ function addressErrors(form) {
 export default function CheckoutPage() {
   const { user } = useAuth()
   const { items, totals, clear, coupon } = useCart()
-  const { tenant } = useTenant()
+  const { tenant, isPreview, basePath } = useTenant()
   const { t } = useI18n()
   const [step, setStep] = useState(user ? 'address' : 'identity')
   const [order, setOrder] = useState(null)
@@ -61,11 +61,14 @@ export default function CheckoutPage() {
     delivery: 'standard',
     paymentMethod: 'upi',
   })
-  const base = `/store/${tenant.slug}`
+  const base = basePath
   const set = (key, value) => setForm((f) => ({ ...f, [key]: value }))
   const errors = addressErrors(form)
 
   const { submit: placeOrder, pending, error } = useSubmit(async () => {
+    if (isPreview) {
+      throw new Error('Payment is disabled on this mock storefront. Browse, bag, and fill checkout — orders are not placed.')
+    }
     const created = await ordersApi.checkout({
       tenantId: tenant.id,
       items: items.map((i) => ({ productId: i.id, qty: i.qty })),
@@ -208,6 +211,19 @@ export default function CheckoutPage() {
         {step === 'payment' ? (
           <section className="checkout-step">
             <h2>Payment</h2>
+            {isPreview ? (
+              <>
+                <p className="muted">
+                  This is a theme tour with static sarees. You can walk the house, add to bag, and fill delivery —
+                  placing a paid order is not available here.
+                </p>
+                <div className="form-actions">
+                  <Button variant="ghost" onClick={() => setStep('delivery')}>Back</Button>
+                  <Button disabled>Place order</Button>
+                </div>
+              </>
+            ) : (
+              <>
             <Select
               label="Payment method"
               value={form.paymentMethod}
@@ -227,6 +243,8 @@ export default function CheckoutPage() {
               <Button variant="ghost" onClick={() => setStep('delivery')}>Back</Button>
               <Button loading={pending} onClick={placeOrder}>{t('action.placeOrder')}</Button>
             </div>
+              </>
+            )}
           </section>
         ) : null}
       </div>
@@ -273,7 +291,7 @@ export function AuthPage() {
     const from = location.state?.from
     if (account.role === ROLES.SUPER_ADMIN) navigate('/super-admin', { replace: true })
     else if (account.role !== ROLES.CUSTOMER) navigate(from?.startsWith('/admin') ? from : '/admin', { replace: true })
-    else navigate(from || `/store/${tenant?.slug || DEFAULT_STORE_SLUG}/account`, { replace: true })
+    else navigate(from || `${tenant?.basePath || `/store/${tenant?.slug || DEFAULT_STORE_SLUG}`}/account`, { replace: true })
   }
 
   const signIn = useSubmit(async () => {

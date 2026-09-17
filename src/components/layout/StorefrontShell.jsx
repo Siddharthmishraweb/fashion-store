@@ -54,11 +54,11 @@ export function StorefrontShell() {
 }
 
 function StorefrontFrame() {
-  const { tenant, homepage, previewing } = useTenant()
+  const { tenant, homepage, previewing, isPreview, theme, basePath } = useTenant()
   const [cartOpen, setCartOpen] = useState(false)
   const isDesktop = useMedia('(min-width: 768px)')
   const announce = homepage?.sections?.find((s) => s.type === 'announcement' && s.enabled)
-  const storeUrl = publicUrl(`/store/${tenant.slug}`)
+  const storeUrl = publicUrl(basePath)
 
   return (
     <div className={cx('app-shell', !isDesktop && 'has-tabbar')}>
@@ -81,7 +81,9 @@ function StorefrontFrame() {
 
       {previewing ? (
         <div className="preview-flag" role="status">
-          You are previewing a theme. Nothing is saved to this storefront.
+          {isPreview
+            ? `Mock tour of ${theme?.name || tenant.name} — browse, bag, and checkout up to payment. Orders are not placed.`
+            : 'You are previewing a theme. Nothing is saved to this storefront.'}
         </div>
       ) : null}
 

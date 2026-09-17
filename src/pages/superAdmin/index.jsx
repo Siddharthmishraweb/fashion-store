@@ -14,11 +14,12 @@ import {
   StatusPill,
 } from '../../components/common/index.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
-import { DEFAULT_STORE_SLUG, env } from '../../config/env.js'
+import { env } from '../../config/env.js'
 import { formatCurrency, formatDate, formatPercent, slugify } from '../../utils/index.js'
 import { passwordIssues } from '../../utils/security.js'
 import { THEMES } from '../../theme/themes.js'
 import { ThemePreview } from '../../components/commerce/ThemePreview.jsx'
+import { themePreviewPath } from '../../services/preview/storefront.js'
 
 export default function SuperDashboard() {
   const { data, loading, error, refetch } = useAsync(() => analyticsApi.platform(), [])
@@ -220,20 +221,29 @@ export function ThemesAdmin() {
       <div className="admin-top">
         <div>
           <h1>Theme library</h1>
-          <p className="muted">{themes.length} ready-made looks. Store owners can fine-tune colour, type, and layout in Appearance.</p>
+          <p className="muted">{themes.length} ready-made looks. Open any card in a new tab to walk a mock storefront. Owners can still fine-tune colour, type, and layout in Appearance.</p>
         </div>
       </div>
       <div className="theme-grid">
         {themes.map((theme) => (
           <article className="theme-card" key={theme.id}>
-            <ThemePreview theme={theme} storeName={theme.name} />
+            <a
+              href={themePreviewPath(theme.id)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="theme-card-tour"
+            >
+              <ThemePreview theme={theme} storeName={theme.name} />
+            </a>
             <div className="theme-card-body">
               <h3>{theme.name}</h3>
               <p className="muted">{theme.description}</p>
               <p className="caption">{theme.headingFont} / {theme.bodyFont} · {theme.layoutStyle}</p>
-              <Link className="btn btn-ghost btn-sm" to={`/store/${DEFAULT_STORE_SLUG}?previewTheme=${theme.id}`} target="_blank" rel="noreferrer">
-                Live preview
-              </Link>
+              <div className="theme-card-actions">
+                <a className="btn btn-sm" href={themePreviewPath(theme.id)} target="_blank" rel="noopener noreferrer">
+                  Open mock storefront
+                </a>
+              </div>
             </div>
           </article>
         ))}

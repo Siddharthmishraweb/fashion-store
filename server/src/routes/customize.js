@@ -21,7 +21,7 @@ import { HOMEPAGE_BLOCK_TYPES } from '../domain/homepage.js'
 const HEX = /^#[0-9a-fA-F]{3,8}$/
 const FONT_KEYS = [
   'cormorant', 'jost', 'playfair', 'nunito', 'fraunces', 'sourceSans',
-  'libre', 'outfit', 'karla', 'cinzel', 'inter',
+  'libre', 'outfit', 'karla', 'cinzel', 'inter', 'raleway', 'ibmPlex',
 ]
 
 /** Whitelists the theme document; anything unrecognized is dropped. */
@@ -56,9 +56,9 @@ function sanitizeTheme(input, current) {
     borderRadius: /^(\d{1,3}px|999px)$/.test(String(input.borderRadius ?? '')) ? input.borderRadius : current.borderRadius,
     buttonStyle: enumeration('buttonStyle', ['sharp', 'soft', 'pill']),
     cardStyle: enumeration('cardStyle', ['minimal', 'soft', 'bordered']),
-    headerStyle: enumeration('headerStyle', ['classic', 'centered', 'minimal', 'split']),
+    headerStyle: enumeration('headerStyle', ['classic', 'centered', 'minimal', 'split', 'search-rail']),
     footerStyle: enumeration('footerStyle', ['columns', 'centered', 'editorial']),
-    productCardStyle: enumeration('productCardStyle', ['minimal', 'bordered', 'overlay', 'editorial']),
+    productCardStyle: enumeration('productCardStyle', ['minimal', 'bordered', 'overlay', 'editorial', 'gallery']),
     bannerStyle: enumeration('bannerStyle', ['editorial', 'fullscreen', 'split', 'carousel', 'story', 'static']),
     spacingScale: scale('spacingScale'),
     typographyScale: scale('typographyScale'),

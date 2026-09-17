@@ -1,4 +1,12 @@
 import { del, get, patch, post } from './client.js'
+import {
+  isPreviewTenantId,
+  previewFacets,
+  previewGet,
+  previewList,
+  previewRecommendations,
+  previewSearch,
+} from '../preview/storefront.js'
 
 function query(params = {}) {
   const search = new URLSearchParams()
@@ -11,11 +19,11 @@ function query(params = {}) {
 }
 
 export const productsApi = {
-  list: (params = {}) => get(`/products?${query(params)}`),
-  facets: (tenantId) => get(`/products/facets?${query({ tenantId })}`),
-  get: (id, tenantId) => get(`/products/${encodeURIComponent(id)}?${query({ tenantId })}`),
-  search: (params = {}) => get(`/search?${query(params)}`),
-  recommendations: (params = {}) => get(`/recommendations?${query(params)}`),
+  list: (params = {}) => (isPreviewTenantId(params.tenantId) ? Promise.resolve(previewList(params)) : get(`/products?${query(params)}`)),
+  facets: (tenantId) => (isPreviewTenantId(tenantId) ? Promise.resolve(previewFacets(tenantId)) : get(`/products/facets?${query({ tenantId })}`)),
+  get: (id, tenantId) => (isPreviewTenantId(tenantId) ? Promise.resolve(previewGet(id, tenantId)) : get(`/products/${encodeURIComponent(id)}?${query({ tenantId })}`)),
+  search: (params = {}) => (isPreviewTenantId(params.tenantId) ? Promise.resolve(previewSearch(params)) : get(`/search?${query(params)}`)),
+  recommendations: (params = {}) => (isPreviewTenantId(params.tenantId) ? Promise.resolve(previewRecommendations(params)) : get(`/recommendations?${query(params)}`)),
   create: (body) => post('/products', body),
   update: (id, body) => patch(`/products/${id}`, body),
   remove: (id) => del(`/products/${id}`),

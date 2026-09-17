@@ -13,6 +13,7 @@ import { useToast } from '../../context/ToastContext.jsx'
 import { HOMEPAGE_BLOCKS } from '../../config/constants.js'
 import { FONT_CATALOG, THEMES } from '../../theme/themes.js'
 import { ThemePreview } from '../../components/commerce/ThemePreview.jsx'
+import { themePreviewPath } from '../../services/preview/storefront.js'
 import { cx, uid, withinDateRange } from '../../utils/index.js'
 
 const TABS = [
@@ -133,9 +134,11 @@ export default function CustomizerPage() {
           {tab === 'theme' ? (
             <div className="theme-picker">
               {THEMES.map((theme) => (
-                <button
+                <a
                   key={theme.id}
-                  type="button"
+                  href={themePreviewPath(theme.id)}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className={cx('theme-option', current.themeDraft.id === theme.id && 'on')}
                   onClick={() => setTheme(theme)}
                 >
@@ -143,8 +146,9 @@ export default function CustomizerPage() {
                   <span>
                     <b>{theme.name}</b>
                     <small className="muted">{theme.description}</small>
+                    <small className="caption">Open mock storefront →</small>
                   </span>
-                </button>
+                </a>
               ))}
             </div>
           ) : null}
@@ -167,13 +171,13 @@ export default function CustomizerPage() {
                 label="Heading typeface"
                 value={current.themeDraft.headingFont}
                 onChange={(e) => setTheme({ headingFont: e.target.value })}
-                options={fontOptions(['cormorant', 'playfair', 'fraunces', 'cinzel', 'outfit', 'libre'])}
+                options={fontOptions(['cormorant', 'playfair', 'fraunces', 'cinzel', 'outfit', 'libre', 'raleway'])}
               />
               <Select
                 label="Body typeface"
                 value={current.themeDraft.bodyFont}
                 onChange={(e) => setTheme({ bodyFont: e.target.value })}
-                options={fontOptions(['jost', 'nunito', 'inter', 'outfit', 'karla', 'sourceSans'])}
+                options={fontOptions(['jost', 'nunito', 'inter', 'outfit', 'karla', 'sourceSans', 'ibmPlex'])}
               />
             </>
           ) : null}
@@ -184,13 +188,13 @@ export default function CustomizerPage() {
                 label="Header style"
                 value={current.themeDraft.headerStyle}
                 onChange={(e) => setTheme({ headerStyle: e.target.value })}
-                options={['classic', 'centered', 'minimal', 'split'].map((v) => ({ value: v, label: v }))}
+                options={['classic', 'centered', 'minimal', 'split', 'search-rail'].map((v) => ({ value: v, label: v }))}
               />
               <Select
                 label="Product card style"
                 value={current.themeDraft.productCardStyle}
                 onChange={(e) => setTheme({ productCardStyle: e.target.value })}
-                options={['minimal', 'bordered', 'overlay', 'editorial'].map((v) => ({ value: v, label: v }))}
+                options={['minimal', 'bordered', 'overlay', 'editorial', 'gallery'].map((v) => ({ value: v, label: v }))}
               />
               <Select
                 label="Button shape"

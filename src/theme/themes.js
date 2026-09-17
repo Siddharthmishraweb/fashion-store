@@ -39,6 +39,14 @@ export const FONT_CATALOG = {
     name: 'Cinzel',
     href: 'https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&display=swap',
   },
+  raleway: {
+    name: 'Raleway',
+    href: 'https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700&display=swap',
+  },
+  ibmPlex: {
+    name: 'IBM Plex Sans',
+    href: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap',
+  },
   inter: {
     name: 'Inter',
     href: 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap',
@@ -253,6 +261,30 @@ export const THEMES = [
     productCardStyle: 'overlay',
     headerStyle: 'classic',
   }),
+  createTheme({
+    id: 'six-yards',
+    name: 'Six Yards',
+    description: 'Sarees only — white gallery, maroon wordmark, pill search, and rounded drape photography.',
+    layoutStyle: 'saree-gallery',
+    primaryColor: '#832729',
+    secondaryColor: '#212529',
+    accentColor: '#E8D5C4',
+    backgroundColor: '#FFFFFF',
+    surfaceColor: '#FFFFFF',
+    textColor: '#212529',
+    mutedTextColor: '#707070',
+    borderColor: '#E8E0D6',
+    headingFont: 'raleway',
+    bodyFont: 'ibmPlex',
+    borderRadius: '12px',
+    buttonStyle: 'pill',
+    cardStyle: 'soft',
+    headerStyle: 'search-rail',
+    footerStyle: 'columns',
+    productCardStyle: 'gallery',
+    bannerStyle: 'static',
+    animationLevel: 'subtle',
+  }),
 ]
 
 export function getThemeById(id) {
@@ -280,7 +312,7 @@ export function themeToCssVars(theme) {
     '--radius-lg': theme.cardStyle === 'soft' ? '16px' : radius,
     '--space-scale': String(theme.spacingScale || 1),
     '--type-scale': String(theme.typographyScale || 1),
-    '--header-height': theme.headerStyle === 'minimal' ? '64px' : '78px',
+    '--header-height': theme.headerStyle === 'search-rail' ? '72px' : theme.headerStyle === 'minimal' ? '64px' : '78px',
   }
 }
 

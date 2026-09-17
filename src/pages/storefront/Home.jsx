@@ -6,7 +6,7 @@ import { HomepageRenderer } from '../../components/commerce/HomepageRenderer.jsx
 import { Skeleton, ErrorState } from '../../components/common/index.jsx'
 
 export default function StoreHome() {
-  const { tenant, homepage, banners, categories, collections, testimonials, instagram } = useTenant()
+  const { tenant, homepage, banners, categories, collections, testimonials, instagram, basePath } = useTenant()
   const list = collections || []
   const ids = useMemo(
     () => [...new Set(list.flatMap((c) => c.productIds || []))].join(','),
@@ -64,7 +64,7 @@ export default function StoreHome() {
       productsByCollection={productsByCollection}
       latestProducts={latestProducts}
       facets={facets}
-      base={`/store/${tenant.slug}`}
+      base={basePath}
       testimonials={testimonials}
       instagram={instagram}
     />

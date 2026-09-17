@@ -45,6 +45,58 @@ const json = (value) => sql.json(value)
 /* ----------------------------------------------------------- page defaults */
 
 function defaultHomepage(store) {
+  if (store.themeId === 'six-yards') {
+    return {
+      version: 1,
+      status: 'published',
+      sections: [
+        { id: 'sec_announce', type: 'announcement', enabled: true, config: { text: store.announcement, link: `/store/${store.slug}/products` } },
+        {
+          id: 'sec_featured',
+          type: 'product_grid',
+          enabled: true,
+          config: {
+            title: '',
+            collectionId: `col_${store.id}_trend`,
+            columnsDesktop: 2,
+            columnsTablet: 2,
+            columnsMobile: 2,
+            showPrice: true,
+            showWishlist: true,
+          },
+        },
+        { id: 'sec_looks', type: 'category_grid', enabled: true, config: { title: 'Shop By Look', style: 'looks' } },
+        { id: 'sec_fav', type: 'product_slider', enabled: true, config: { title: 'Customer favourites', collectionId: `col_${store.id}_best`, showPrice: true } },
+        { id: 'sec_weave', type: 'shop_by_fabric', enabled: true, config: { title: 'Shop by weave' } },
+        { id: 'sec_craft', type: 'shop_by_region', enabled: true, config: { title: 'Shop by craft cluster' } },
+        {
+          id: 'sec_promo',
+          type: 'collection_banner',
+          enabled: true,
+          config: {
+            title: 'Wedding sarees',
+            subtitle: 'Temple borders, zari pallus, and silks for the mandap.',
+            image: PHOTOS.festive,
+            ctaText: 'Shop wedding sarees',
+            ctaUrl: `/store/${store.slug}/category/wedding`,
+          },
+        },
+        {
+          id: 'sec_new',
+          type: 'product_grid',
+          enabled: true,
+          config: {
+            title: 'New in sarees',
+            collectionId: `col_${store.id}_new`,
+            columnsDesktop: 4,
+            columnsTablet: 3,
+            columnsMobile: 2,
+            showPrice: true,
+          },
+        },
+      ],
+    }
+  }
   const fullscreen = store.themeId === 'contemporary-luxury' || store.themeId === 'festive-india'
   return {
     version: 1,

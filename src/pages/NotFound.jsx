@@ -3,8 +3,10 @@ import { Seo } from '../components/common/index.jsx'
 import { env } from '../config/env.js'
 
 export function NotFound({ scope = 'platform' }) {
-  const { slug } = useParams()
-  const home = scope === 'store' && slug ? `/store/${slug}` : '/'
+  const { slug, themeId } = useParams()
+  const previewHome = `/preview/${themeId || ''}`
+  const storeHome = `/store/${slug || ''}`
+  const home = scope === 'preview' && themeId ? previewHome : scope === 'store' && slug ? storeHome : themeId ? previewHome : slug ? storeHome : '/'
   return (
     <>
       <Seo title={`Page not found — ${env.appName}`} description="The page you were looking for has moved or no longer exists." noindex />
@@ -15,8 +17,8 @@ export function NotFound({ scope = 'platform' }) {
           The link may be out of date, or the piece you were looking for has sold out. Everything else is still here.
         </p>
         <div className="notfound-actions">
-          <Link className="btn" to={home}>{scope === 'store' ? 'Back to the storefront' : 'Back to the marketplace'}</Link>
-          {scope === 'store' && slug ? <Link className="btn btn-ghost" to={`/store/${slug}/products`}>Browse all sarees</Link> : null}
+          <Link className="btn" to={home}>{scope === 'store' || scope === 'preview' || slug || themeId ? 'Back to the storefront' : 'Back to the marketplace'}</Link>
+          {home !== '/' ? <Link className="btn btn-ghost" to={`${home}/products`}>Browse all sarees</Link> : null}
         </div>
       </div>
     </>

@@ -102,7 +102,7 @@ function WaitlistForm({ tenantId, productId }) {
 
 export default function ProductDetail() {
   const { productSlug } = useParams()
-  const { tenant } = useTenant()
+  const { tenant, basePath } = useTenant()
   const { data, loading, error, refetch } = useAsync(
     () => productsApi.get(productSlug, tenant.id),
     [productSlug, tenant.id],
@@ -133,7 +133,7 @@ export default function ProductDetail() {
     if (product) pushRecent(product)
   }, [product, pushRecent])
 
-  const base = `/store/${tenant.slug}`
+  const base = basePath
   const images = useMemo(() => (product?.images || []).filter((img) => img?.src), [product])
 
   if (error) {

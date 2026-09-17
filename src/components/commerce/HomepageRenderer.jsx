@@ -176,15 +176,16 @@ function Block({ section, banners, categories, productsByCollection, latestProdu
       const root = categories.find((c) => !c.parentId && c.children?.length)
       const tiles = (root?.children?.length ? root.children : categories.filter((c) => !c.parentId)).slice(0, 8)
       if (!tiles.length) return null
+      const lookStyle = cfg.style === 'looks'
       return (
         <section className="section">
           <div className="container">
-            <SectionHead title={cfg.title} subtitle={cfg.subtitle} />
-            <div className="cat-grid">
+            <SectionHead title={cfg.title || (lookStyle ? 'Shop By Look' : undefined)} subtitle={cfg.subtitle} />
+            <div className={lookStyle ? 'look-rail' : 'cat-grid'}>
               {tiles.map((c) => (
-                <Link className="cat-tile" key={c.id} to={`${base}/category/${c.slug}`}>
+                <Link className={lookStyle ? 'look-tile' : 'cat-tile'} key={c.id} to={`${base}/category/${c.slug}`}>
                   <OptimizedImage src={c.image} alt={c.name} width={400} height={500} sizes="(max-width: 600px) 45vw, 22vw" />
-                  <span>{c.name}</span>
+                  <span>{lookStyle ? `${c.name} sarees` : c.name}</span>
                 </Link>
               ))}
             </div>

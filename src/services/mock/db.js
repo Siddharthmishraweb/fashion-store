@@ -1,6 +1,6 @@
 import { createSeed } from './seed.js'
 
-const KEY = 'vk.mock.db.v1'
+const KEY = 'vk.mock.db.v2'
 
 function load() {
   try {

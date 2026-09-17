@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef } from 'react'
 import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { TenantProvider } from './context/TenantContext.jsx'
 import { Button, ErrorBoundary, Skeleton } from './components/common/index.jsx'
@@ -6,6 +6,7 @@ import { useAuth } from './context/AuthContext.jsx'
 import { useToast } from './context/ToastContext.jsx'
 import { hasPermission, ROLES } from './config/constants.js'
 import { DEFAULT_STORE_SLUG } from './config/env.js'
+import { buildPreviewStorefront } from './services/preview/storefront.js'
 
 const named = (loader, name) => lazy(() => loader().then((mod) => ({ default: mod[name] })))
 
@@ -97,6 +98,48 @@ function StoreRoot() {
   )
 }
 
+function PreviewRoot() {
+  const { themeId } = useParams()
+  const config = useMemo(() => buildPreviewStorefront(themeId), [themeId])
+  if (!config) return <NotFound scope="preview" />
+  return (
+    <TenantProvider slug={themeId} previewConfig={config}>
+      <StorefrontShell />
+    </TenantProvider>
+  )
+}
+
+function storefrontPages() {
+  return (
+    <>
+      <Route index element={<StoreHome />} />
+      <Route path="products" element={<ProductList mode="all" />} />
+      <Route path="category/:category" element={<ProductList />} />
+      <Route path="product/:productSlug" element={<ProductDetail />} />
+      <Route path="search" element={<ProductList mode="search" />} />
+      <Route path="cart" element={<CartPage />} />
+      <Route path="wishlist" element={<WishlistPage />} />
+      <Route path="checkout" element={<CheckoutPage />} />
+      <Route path="login" element={<AuthPage />} />
+      <Route path="account" element={<AccountLayout />}>
+        <Route index element={<Navigate to="profile" replace />} />
+        <Route path="profile" element={<AccountHome />} />
+        <Route path="orders" element={<OrdersPage />} />
+        <Route path="orders/:orderId" element={<OrderDetailPage />} />
+        <Route path="wishlist" element={<WishlistPage />} />
+        <Route path="addresses" element={<SimpleAccount title="Addresses" body="Delivery addresses you save at checkout appear here." />} />
+        <Route path="payments" element={<SimpleAccount title="Saved payments" body="Cards and UPI handles are tokenised by the payment gateway and never stored here." />} />
+        <Route path="coupons" element={<SimpleAccount title="Coupons" body="WELCOME10 gives 10% off your first order above ₹4,999." />} />
+        <Route path="returns" element={<SimpleAccount title="Returns" body="You have no open returns. Returns are accepted within 7 days of delivery." />} />
+        <Route path="reviews" element={<SimpleAccount title="Reviews" body="Reviews you write on product pages are listed here." />} />
+        <Route path="notifications" element={<NotificationsPage />} />
+        <Route path="preferences" element={<SimpleAccount title="Preferences" body="Language and communication preferences for this storefront." />} />
+      </Route>
+      <Route path="*" element={<NotFound scope="store" />} />
+    </>
+  )
+}
+
 function Guard({ roles, permission, children }) {
   const { user } = useAuth()
   const location = useLocation()
@@ -138,30 +181,10 @@ export default function App() {
             <Route path="/login" element={<GlobalLogin />} />
 
             <Route path="/store/:slug" element={<StoreRoot />}>
-              <Route index element={<StoreHome />} />
-              <Route path="products" element={<ProductList mode="all" />} />
-              <Route path="category/:category" element={<ProductList />} />
-              <Route path="product/:productSlug" element={<ProductDetail />} />
-              <Route path="search" element={<ProductList mode="search" />} />
-              <Route path="cart" element={<CartPage />} />
-              <Route path="wishlist" element={<WishlistPage />} />
-              <Route path="checkout" element={<CheckoutPage />} />
-              <Route path="login" element={<AuthPage />} />
-              <Route path="account" element={<AccountLayout />}>
-                <Route index element={<Navigate to="profile" replace />} />
-                <Route path="profile" element={<AccountHome />} />
-                <Route path="orders" element={<OrdersPage />} />
-                <Route path="orders/:orderId" element={<OrderDetailPage />} />
-                <Route path="wishlist" element={<WishlistPage />} />
-                <Route path="addresses" element={<SimpleAccount title="Addresses" body="Delivery addresses you save at checkout appear here." />} />
-                <Route path="payments" element={<SimpleAccount title="Saved payments" body="Cards and UPI handles are tokenised by the payment gateway and never stored here." />} />
-                <Route path="coupons" element={<SimpleAccount title="Coupons" body="WELCOME10 gives 10% off your first order above ₹4,999." />} />
-                <Route path="returns" element={<SimpleAccount title="Returns" body="You have no open returns. Returns are accepted within 7 days of delivery." />} />
-                <Route path="reviews" element={<SimpleAccount title="Reviews" body="Reviews you write on product pages are listed here." />} />
-                <Route path="notifications" element={<NotificationsPage />} />
-                <Route path="preferences" element={<SimpleAccount title="Preferences" body="Language and communication preferences for this storefront." />} />
-              </Route>
-              <Route path="*" element={<NotFound scope="store" />} />
+              {storefrontPages()}
+            </Route>
+            <Route path="/preview/:themeId" element={<PreviewRoot />}>
+              {storefrontPages()}
             </Route>
 
             <Route

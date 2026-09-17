@@ -60,9 +60,9 @@ function CouponBox({ tenantId, subtotal, coupon, setCoupon }) {
 
 export default function CartPage() {
   const { items, updateQty, remove, saveForLater, moveToCart, saved, totals, setCoupon, coupon, maxQty } = useCart()
-  const { tenant } = useTenant()
+  const { tenant, basePath } = useTenant()
   const { t } = useI18n()
-  const base = `/store/${tenant.slug}`
+  const base = basePath
   const rec = useAsync(() => productsApi.recommendations({ tenantId: tenant.id, type: 'trending' }), [tenant.id])
 
   if (!items.length) {
@@ -176,10 +176,10 @@ export default function CartPage() {
 export function WishlistPage() {
   const { items, remove } = useWishlist()
   const { add } = useCart()
-  const { tenant } = useTenant()
+  const { tenant, basePath } = useTenant()
   const { t } = useI18n()
   const { push } = useToast()
-  const base = `/store/${tenant.slug}`
+  const base = basePath
 
   if (!items.length) {
     return (

@@ -5,24 +5,26 @@ import { cx } from '../../utils/index.js'
 export function ThemePreview({ theme, storeName = 'Your house', className }) {
   if (!theme) return null
   const style = themeToCssVars(theme)
+  const sareeGallery = theme.id === 'six-yards'
   return (
     <div
-      className={cx('theme-live-preview', className)}
+      className={cx('theme-live-preview', sareeGallery && 'is-saree-gallery', className)}
       style={style}
       data-theme={theme.id}
       aria-hidden="true"
     >
       <div className="tlp-bar">
         <span className="tlp-logo">{storeName}</span>
-        <span className="tlp-nav">Shop · Wedding · Festive</span>
+        <span className="tlp-nav">{sareeGallery ? 'Sarees · Weaves · Wedding' : 'Shop · Wedding · Festive'}</span>
         <span className="tlp-icon" />
       </div>
-      <div className="tlp-hero">
-        <p className="tlp-kicker">New season</p>
-        <strong>Weaves, considered</strong>
-        <span className="tlp-cta">Shop the edit</span>
+      {sareeGallery ? <div className="tlp-search" /> : null}
+      <div className={cx('tlp-hero', sareeGallery && 'tlp-hero-saree')}>
+        <p className="tlp-kicker">{sareeGallery ? 'Festive sarees' : 'New season'}</p>
+        <strong>{sareeGallery ? 'Six yards, considered' : 'Weaves, considered'}</strong>
+        <span className="tlp-cta">{sareeGallery ? 'Shop the pallu' : 'Shop the edit'}</span>
       </div>
-      <div className="tlp-cards">
+      <div className={cx('tlp-cards', sareeGallery && 'tlp-cards-round')}>
         <span />
         <span />
         <span />

@@ -57,7 +57,7 @@ function titleFor(mode, category, query) {
 export default function ProductListPage({ mode = 'category' }) {
   const { category } = useParams()
   const [params, setParams] = useSearchParams()
-  const { tenant } = useTenant()
+  const { tenant, basePath } = useTenant()
   const { add } = useCart()
   const ctx = useOutletContext()
   const [quick, setQuick] = useState(null)
@@ -96,7 +96,7 @@ export default function ProductListPage({ mode = 'category' }) {
   )
 
   const title = titleFor(mode, category, searchTerm)
-  const base = `/store/${tenant.slug}`
+  const base = basePath
 
   const update = (mutator, { resetPage = true } = {}) => {
     const next = new URLSearchParams(params)

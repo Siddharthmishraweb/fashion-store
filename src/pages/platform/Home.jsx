@@ -5,6 +5,7 @@ import { useAsync, useDebounced, useInView } from '../../hooks/index.js'
 import { EmptyState, ErrorState, Input, OptimizedImage, Seo, Skeleton } from '../../components/common/index.jsx'
 import { ThemePreview } from '../../components/commerce/ThemePreview.jsx'
 import { THEMES, applyTheme } from '../../theme/themes.js'
+import { themePreviewPath } from '../../services/preview/storefront.js'
 import { env, publicUrl } from '../../config/env.js'
 
 const PROMISES = [
@@ -24,9 +25,11 @@ const HOUSE_PAGE_SIZE = 8
 function DeferredPreview({ theme, selected, onSelect }) {
   const [ref, visible] = useInView({ rootMargin: '280px' })
   return (
-    <button
+    <a
       ref={ref}
-      type="button"
+      href={themePreviewPath(theme.id)}
+      target="_blank"
+      rel="noopener noreferrer"
       className={theme.id === selected ? 'platform-theme-card on' : 'platform-theme-card'}
       onClick={() => onSelect(theme.id)}
     >
@@ -34,8 +37,9 @@ function DeferredPreview({ theme, selected, onSelect }) {
       <span>
         <b>{theme.name}</b>
         <small className="muted">{theme.description}</small>
+        <small className="caption">Open mock storefront →</small>
       </span>
-    </button>
+    </a>
   )
 }
 
@@ -128,8 +132,15 @@ export default function PlatformHome() {
               <p className="caption">Owners at /login · Super admin at /super-admin</p>
             </div>
             <div className="platform-hero-stage">
-              <ThemePreview theme={activeTheme} storeName={activeTheme.name} className="platform-hero-preview" />
-              <p className="caption">Live theme preview — {activeTheme.name}</p>
+              <a
+                href={themePreviewPath(activeTheme.id)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="platform-hero-tour"
+              >
+                <ThemePreview theme={activeTheme} storeName={activeTheme.name} className="platform-hero-preview" />
+              </a>
+              <p className="caption">Opens {activeTheme.name} as a full mock storefront in a new tab</p>
             </div>
           </div>
         </section>
@@ -156,9 +167,9 @@ export default function PlatformHome() {
             <div className="platform-section-head">
               <div>
                 <p className="platform-kicker">Theme library</p>
-                <h2>Choose a look. See it before you commit.</h2>
+                <h2>Choose a look. Walk it before you commit.</h2>
               </div>
-              <p className="muted">Every palette below is a live miniature of the storefront — header, hero, and product grid.</p>
+              <p className="muted">Click any theme to open a full mock storefront in a new tab — browse, bag, and checkout up to payment. Nothing is a live order.</p>
             </div>
             <div className="platform-theme-grid">
               {THEMES.map((theme) => (

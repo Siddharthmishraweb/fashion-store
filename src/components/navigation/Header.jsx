@@ -44,8 +44,38 @@ function MegaPanel({ item, onNavigate }) {
   )
 }
 
+function HeaderSearch({ base, onExpand }) {
+  const [q, setQ] = useState('')
+  const navigate = useNavigate()
+  return (
+    <form
+      className="header-search"
+      role="search"
+      onSubmit={(event) => {
+        event.preventDefault()
+        const query = q.trim()
+        if (query) navigate(`${base}/search?q=${encodeURIComponent(query)}`)
+        else onExpand?.()
+      }}
+    >
+      <label className="sr-only" htmlFor="header-saree-search">Search sarees</label>
+      <input
+        id="header-saree-search"
+        type="search"
+        placeholder="Search for festive sarees"
+        value={q}
+        onChange={(event) => setQ(event.target.value)}
+        autoComplete="off"
+      />
+      <button type="submit" className="icon-btn" aria-label="Search sarees">
+        <IconSearch />
+      </button>
+    </form>
+  )
+}
+
 export function Header({ onOpenCart }) {
-  const { tenant, navigation } = useTenant()
+  const { tenant, navigation, theme, basePath } = useTenant()
   const { t } = useI18n()
   const { user } = useAuth()
   const { count } = useCart()
@@ -55,7 +85,7 @@ export function Header({ onOpenCart }) {
   const [openId, setOpenId] = useState(null)
   const closeTimer = useRef(null)
   const isDesktop = useMedia('(min-width: 1024px)')
-  const base = `/store/${tenant.slug}`
+  const base = basePath
   const items = navigation?.items || []
 
   useEffect(() => () => clearTimeout(closeTimer.current), [])
@@ -70,6 +100,7 @@ export function Header({ onOpenCart }) {
 
   const activeItem = items.find((i) => i.id === openId)
   const logo = safeImageUrl(tenant.branding?.logo)
+  const searchRail = theme?.headerStyle === 'search-rail'
 
   return (
     <header className="header" onKeyDown={(e) => e.key === 'Escape' && setOpenId(null)}>
@@ -80,21 +111,34 @@ export function Header({ onOpenCart }) {
               <IconMenu />
             </button>
           ) : null}
-          <button type="button" className="icon-btn" aria-label={t('action.search')} onClick={() => setSearch(true)}>
-            <IconSearch />
-          </button>
+          {searchRail ? (
+            <Link to={base} className="logo">
+              {logo ? <img src={logo} alt={tenant.name} height="36" width="120" decoding="async" /> : tenant.logoText}
+              <small>Handloom sarees</small>
+            </Link>
+          ) : (
+            <button type="button" className="icon-btn" aria-label={t('action.search')} onClick={() => setSearch(true)}>
+              <IconSearch />
+            </button>
+          )}
         </div>
 
-        <Link to={base} className="logo">
-          {logo ? <img src={logo} alt={tenant.name} height="36" width="120" decoding="async" /> : tenant.logoText}
-          <small>{tenant.tagline}</small>
-        </Link>
+        {searchRail ? (
+          isDesktop ? <HeaderSearch base={base} onExpand={() => setSearch(true)} /> : <span />
+        ) : (
+          <Link to={base} className="logo">
+            {logo ? <img src={logo} alt={tenant.name} height="36" width="120" decoding="async" /> : tenant.logoText}
+            <small>{tenant.tagline}</small>
+          </Link>
+        )}
 
         <div className="header-actions">
-          <Link className="icon-btn hide-sm" to={user ? `${base}/account` : `${base}/login`} aria-label={t('action.account')}>
-            <IconUser />
-          </Link>
-          <Link className="icon-btn hide-sm" to={`${base}/wishlist`} aria-label={`${t('action.wishlist')}${wishes ? `, ${wishes} items` : ''}`}>
+          {!searchRail ? (
+            <Link className="icon-btn hide-sm" to={user ? `${base}/account` : `${base}/login`} aria-label={t('action.account')}>
+              <IconUser />
+            </Link>
+          ) : null}
+          <Link className={searchRail ? 'icon-btn' : 'icon-btn hide-sm'} to={`${base}/wishlist`} aria-label={`${t('action.wishlist')}${wishes ? `, ${wishes} items` : ''}`}>
             <IconHeart filled={wishes > 0} />
             {wishes ? <span className="count">{wishes}</span> : null}
           </Link>
@@ -104,6 +148,11 @@ export function Header({ onOpenCart }) {
           </button>
         </div>
       </div>
+      {searchRail && !isDesktop ? (
+        <div className="header-search-row container">
+          <HeaderSearch base={base} onExpand={() => setSearch(true)} />
+        </div>
+      ) : null}
 
       {isDesktop ? (
         <nav className="nav-desktop" aria-label="Primary">
@@ -152,11 +201,11 @@ export function Header({ onOpenCart }) {
 }
 
 export function MobileTabBar({ onOpenCart }) {
-  const { tenant } = useTenant()
+  const { tenant, basePath } = useTenant()
   const { user } = useAuth()
   const { count } = useCart()
   const { count: wishes } = useWishlist()
-  const base = `/store/${tenant.slug}`
+  const base = basePath
   return (
     <nav className="tabbar" aria-label="Quick navigation">
       <NavLink to={base} end>
@@ -223,9 +272,9 @@ function Newsletter() {
 }
 
 export function Footer() {
-  const { tenant } = useTenant()
+  const { tenant, basePath } = useTenant()
   const { t, locale, setLocale } = useI18n()
-  const base = `/store/${tenant.slug}`
+  const base = basePath
   return (
     <footer className="footer">
       <div className="container footer-grid">
@@ -289,10 +338,10 @@ export function Footer() {
 
 export function CartDrawer({ open, onClose }) {
   const { items, updateQty, remove, totals, maxQty } = useCart()
-  const { tenant } = useTenant()
+  const { tenant, basePath } = useTenant()
   const navigate = useNavigate()
   const { t } = useI18n()
-  const base = `/store/${tenant.slug}`
+  const base = basePath
 
   const goto = (path) => {
     onClose()
